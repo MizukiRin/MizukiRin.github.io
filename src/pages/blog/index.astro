@@ -1,0 +1,311 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { formatDate } from "../../utils/date";
+
+const filterDrafts = ({ data }: any) => import.meta.env.DEV || !data.draft;
+
+const techPosts = await getCollection('tech', filterDrafts);
+const dailyPosts = await getCollection('daily', filterDrafts);
+const diaryPosts = await getCollection('diary', filterDrafts);
+
+// Sort each collection by date descending
+const sortedTechPosts = techPosts.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const sortedDailyPosts = dailyPosts.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const sortedDiaryPosts = diaryPosts.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.length > 0;
+---
+
+<BaseLayout title="Mizuki | Blog">
+    <!-- Main Content -->
+    <main
+        class="flex-grow max-w-3xl mx-auto px-6 py-12 w-full animate-fade-in"
+    >
+        <!-- 标题与搜索切换区 -->
+        <div
+            class="flex items-end justify-between border-b border-neutral-200 pb-4 mb-6"
+        >
+            <div class="flex items-baseline space-x-4">
+                <h1 class="text-2xl font-medium text-neutral-900">Notes</h1>
+                <span class="text-xs font-mono text-neutral-400"
+                    >/ Writing</span
+                >
+            </div>
+            <!-- 搜索触发按钮 -->
+            {hasAnyPosts && (
+                <button
+                    id="search-toggle"
+                    class="text-neutral-400 hover:text-neutral-900 transition-colors"
+                    title="Toggle Search"
+                >
+                    <i class="ph ph-magnifying-glass text-xl"></i>
+                </button>
+            )}
+        </div>
+
+        {hasAnyPosts ? (
+            <>
+                <!-- 隐藏的搜索框 -->
+                <div id="search-container">
+                    <div class="relative">
+                        <i
+                            class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                        ></i>
+                        <input
+                            type="text"
+                            id="search-input"
+                            placeholder="Search by title or tag (e.g. python, architecture)..."
+                            class="w-full bg-white border border-neutral-200 rounded-sm py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-neutral-400 transition-colors font-mono placeholder:text-neutral-300"
+                        />
+                    </div>
+                    <div class="text-[10px] text-neutral-400 font-mono mt-2 pl-1">
+                        Try tags: architecture, python, database, essay...
+                    </div>
+                </div>
+
+                <!-- Tabs Navigation -->
+                <div
+                    class="flex space-x-8 border-b border-neutral-100 mb-8 font-mono text-sm overflow-x-auto pb-1"
+                >
+                    <button
+                        class="tab-btn active whitespace-nowrap pb-2 border-b-2 border-neutral-900 text-neutral-900 transition-colors"
+                        data-target="tech"
+                    >Tech Blog</button>
+                    <button
+                        class="tab-btn whitespace-nowrap pb-2 border-b-2 border-transparent text-neutral-400 hover:text-neutral-900 transition-colors"
+                        data-target="daily"
+                    >Daily Notes</button>
+                    <button
+                        class="tab-btn whitespace-nowrap pb-2 border-b-2 border-transparent text-neutral-400 hover:text-neutral-900 transition-colors"
+                        data-target="diary"
+                    >Dev Diary</button>
+                </div>
+
+                <!-- 空状态提示 (搜索无结果时显示) -->
+                <div
+                    id="empty-state"
+                    class="text-center py-12 text-neutral-400 font-mono text-sm"
+                >
+                    <i class="ph ph-ghost text-4xl mb-2"></i>
+                    <p>No notes found matching your criteria.</p>
+                </div>
+
+                <!-- Tab Contents -->
+
+                <!-- Tech Blog Content -->
+                <div id="tech" class="tab-content space-y-2 block">
+                    {sortedTechPosts.length > 0 ? (
+                        sortedTechPosts.map((post) => (
+                            <a
+                                href={`/blog/${post.id}`}
+                                class="post-item group flex flex-col py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+                                data-title={post.data.title}
+                                data-tags={post.data.tags ? post.data.tags.join(', ') : ''}
+                            >
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+                                    <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4 truncate pr-4">
+                                        {post.data.title}
+                                    </span>
+                                    <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0 shrink-0">
+                                        {formatDate(post.data.date)}
+                                    </span>
+                                </div>
+                            </a>
+                        ))
+                    ) : (
+                        <div class="text-center py-12 text-neutral-400 font-mono text-xs">
+                            <p>No tech blogs published yet.</p>
+                        </div>
+                    )}
+                </div>
+
+                <!-- Daily Notes Content -->
+                <div id="daily" class="tab-content space-y-2 hidden">
+                    {sortedDailyPosts.length > 0 ? (
+                        sortedDailyPosts.map((post) => (
+                            <a
+                                href={`/blog/${post.id}`}
+                                class="post-item group flex flex-col py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+                                data-title={post.data.title}
+                                data-tags={post.data.tags ? post.data.tags.join(', ') : ''}
+                            >
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+                                    <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4 truncate pr-4">
+                                        {post.data.title}
+                                    </span>
+                                    <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0 shrink-0">
+                                        {formatDate(post.data.date)}
+                                    </span>
+                                </div>
+                            </a>
+                        ))
+                    ) : (
+                        <div class="text-center py-12 text-neutral-400 font-mono text-xs">
+                            <p>No daily notes published yet.</p>
+                        </div>
+                    )}
+                </div>
+
+                <!-- Dev Diary Content -->
+                <div id="diary" class="tab-content space-y-2 hidden">
+                    {sortedDiaryPosts.length > 0 ? (
+                        sortedDiaryPosts.map((post) => (
+                            <a
+                                href={`/blog/${post.id}`}
+                                class="post-item group flex flex-col py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+                                data-title={post.data.title}
+                                data-tags={post.data.tags ? post.data.tags.join(', ') : ''}
+                            >
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+                                    <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4 truncate pr-4">
+                                        {post.data.title}
+                                    </span>
+                                    <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0 shrink-0">
+                                        {formatDate(post.data.date)}
+                                    </span>
+                                </div>
+                            </a>
+                        ))
+                    ) : (
+                        <div class="text-center py-12 text-neutral-400 font-mono text-xs">
+                            <p>No dev diaries published yet.</p>
+                        </div>
+                    )}
+                </div>
+            </>
+        ) : (
+            <div class="text-center py-20 text-neutral-400 font-mono text-sm">
+                <i class="ph ph-ghost text-4xl mb-2"></i>
+                <p>No notes published yet.</p>
+            </div>
+        )}
+    </main>
+</BaseLayout>
+
+<!-- Scripts for interactivity -->
+{hasAnyPosts && (
+    <script>
+        const tabBtns = document.querySelectorAll(".tab-btn");
+        const tabContents = document.querySelectorAll(".tab-content");
+        const searchToggle = document.getElementById("search-toggle");
+        const searchContainer = document.getElementById("search-container");
+        const searchInput = document.getElementById("search-input") as HTMLInputElement | null;
+        const emptyState = document.getElementById("empty-state");
+
+        // 执行过滤逻辑的主函数
+        function filterPosts() {
+            if (!searchInput) return;
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const activeTabContent =
+                document.querySelector(".tab-content.block");
+
+            if (!activeTabContent) return;
+
+            const posts = activeTabContent.querySelectorAll(".post-item") as NodeListOf<HTMLElement>;
+            let visibleCount = 0;
+
+            posts.forEach((post) => {
+                const title = (
+                    post.getAttribute("data-title") || ""
+                ).toLowerCase();
+                const tags = (
+                    post.getAttribute("data-tags") || ""
+                ).toLowerCase();
+
+                // 搜索逻辑：匹配标题或标签
+                if (
+                    title.includes(searchTerm) ||
+                    tags.includes(searchTerm)
+                ) {
+                    post.style.display = ""; // 恢复默认 flex 布局
+                    visibleCount++;
+                } else {
+                    post.style.display = "none"; // 隐藏该项
+                }
+            });
+
+            // 控制空状态提示的显示
+            if (emptyState) {
+                if (visibleCount === 0) {
+                    emptyState.style.display = "block";
+                } else {
+                    emptyState.style.display = "none";
+                }
+            }
+        }
+
+        // Tab switching logic
+        tabBtns.forEach((btn) => {
+            btn.addEventListener("click", () => {
+                tabBtns.forEach((b) => {
+                    b.classList.remove(
+                        "border-neutral-900",
+                        "text-neutral-900",
+                    );
+                    b.classList.add(
+                        "border-transparent",
+                        "text-neutral-400",
+                    );
+                });
+                tabContents.forEach((c) => {
+                    c.classList.remove("block");
+                    c.classList.add("hidden");
+                });
+
+                btn.classList.remove(
+                    "border-transparent",
+                    "text-neutral-400",
+                );
+                btn.classList.add("border-neutral-900", "text-neutral-900");
+
+                const targetId = btn.getAttribute("data-target");
+                const targetContent = document.getElementById(targetId!);
+                if (targetContent) {
+                    targetContent.classList.remove("hidden");
+                    targetContent.classList.add("block");
+                }
+
+                // 切换 Tab 时重新执行一次过滤，以应用当前的搜索条件
+                filterPosts();
+            });
+        });
+
+        // Search toggle logic
+        if (searchToggle && searchContainer && searchInput) {
+            searchToggle.addEventListener("click", () => {
+                searchContainer.classList.toggle("open");
+                if (searchContainer.classList.contains("open")) {
+                    searchInput.focus();
+                } else {
+                    // 关闭时清空输入并重置列表
+                    searchInput.value = "";
+                    filterPosts();
+                }
+            });
+
+            // 监听输入实时过滤
+            searchInput.addEventListener("input", filterPosts);
+        }
+    </script>
+)}
+
+<style>
+    /* Search bar transition */
+    #search-container {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+    }
+    #search-container.open {
+        max-height: 60px;
+        opacity: 1;
+        margin-bottom: 1.5rem;
+    }
+    /* Empty state for search */
+    #empty-state {
+        display: none;
+    }
+</style>
+

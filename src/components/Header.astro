@@ -1,0 +1,36 @@
+---
+// src/components/Header.astro
+// 公共头部组件：包含面包屑标志和响应式导航栏，并自动识别当前活动页面进行高亮。
+
+const pathname = Astro.url.pathname;
+const isAboutActive = pathname.startsWith('/about');
+const isProjectsActive = pathname.startsWith('/projects');
+const isBlogActive = pathname.startsWith('/blog');
+---
+
+<header class="py-8">
+    <div class="max-w-3xl mx-auto px-6 flex justify-between items-center">
+        <!-- 站点Logo/终端模拟提示 -->
+        <a
+            href="/"
+            class="font-mono font-medium text-lg tracking-tight hover:text-neutral-600 transition-colors"
+        >
+            mizuki@space:~$
+        </a>
+        <!-- 导航菜单 -->
+        <nav class="flex space-x-6 text-sm font-medium">
+            <a
+                href="/about"
+                class={isAboutActive ? "text-neutral-900" : "text-neutral-500 hover:text-neutral-900 transition-colors"}
+            >About</a>
+            <a
+                href="/projects"
+                class={isProjectsActive ? "text-neutral-900" : "text-neutral-500 hover:text-neutral-900 transition-colors"}
+            >Projects</a>
+            <a
+                href="/blog"
+                class={isBlogActive ? "text-neutral-900" : "text-neutral-500 hover:text-neutral-900 transition-colors"}
+            >Blog</a>
+        </nav>
+    </div>
+</header>

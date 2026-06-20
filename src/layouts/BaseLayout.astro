@@ -1,0 +1,91 @@
+---
+// src/layouts/BaseLayout.astro
+// 主布局组件：承载页面骨架，引入字体、图标库，定义全局基础样式与定制滚动条，并集成了 SEO 社交分享元数据。
+
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { 
+  title = "Mizuki | Minimalist", 
+  description = "Simple is better than complex. Complex is better than complicated." 
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        
+        <!-- Open Graph / Facebook SEO 元数据 -->
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={Astro.url} />
+        
+        <!-- Twitter SEO 元数据 -->
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        
+        <!-- Google Fonts -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+        
+        <!-- Phosphor Icons -->
+        <script src="https://unpkg.com/@phosphor-icons/web"></script>
+        
+        <style is:global>
+            body {
+                background-color: #fafafa;
+                color: #171717;
+                -webkit-font-smoothing: antialiased;
+            }
+            ::selection {
+                background-color: #171717;
+                color: #fafafa;
+            }
+            /* 自定义滚动条，呈现极简现代化风格 */
+            ::-webkit-scrollbar {
+                width: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: #fafafa;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #d4d4d4;
+                border-radius: 4px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #a3a3a3;
+            }
+        </style>
+        <!-- 预留插槽供子页面注入自定义 head 标签 -->
+        <slot name="head" />
+    </head>
+    <body
+        class="min-h-screen flex flex-col font-sans selection:bg-neutral-900 selection:text-white"
+    >
+        <!-- 页头/导航区 -->
+        <Header />
+        
+        <!-- 主要内容区由子页面填充 -->
+        <slot />
+        
+        <!-- 页脚区 -->
+        <Footer />
+    </body>
+</html>
+

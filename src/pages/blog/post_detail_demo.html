@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统架构设计师备考指南：系统规划篇 | Mizuki</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        neutral: {
+                            50: '#fafafa',
+                            100: '#f5f5f5',
+                            200: '#e5e5e5',
+                            300: '#d4d4d4',
+                            400: '#a3a3a3',
+                            500: '#737373',
+                            600: '#525252',
+                            700: '#404040',
+                            800: '#262626',
+                            900: '#171717',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #fafafa;
+            color: #171717;
+            -webkit-font-smoothing: antialiased;
+        }
+        ::selection {
+            background-color: #171717;
+            color: #fafafa;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fafafa;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d4d4d4;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a3a3a3;
+        }
+
+        /* 专门为渲染 Markdown 内容定制的排版样式 (类似 Tailwind Typography) */
+        .prose h2 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #171717;
+            margin-top: 3rem;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid #e5e5e5;
+            padding-bottom: 0.5rem;
+        }
+        .prose h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #171717;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        .prose p {
+            margin-bottom: 1.5rem;
+            line-height: 1.75;
+            color: #404040;
+        }
+        .prose ul {
+            list-style-type: disc;
+            padding-left: 1.25rem;
+            margin-bottom: 1.5rem;
+            color: #404040;
+            line-height: 1.75;
+        }
+        .prose li {
+            margin-bottom: 0.5rem;
+        }
+        .prose blockquote {
+            border-left: 3px solid #d4d4d4;
+            padding-left: 1.25rem;
+            color: #737373;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+        /* 行内代码 */
+        .prose code:not(pre code) {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #f5f5f5;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.85em;
+            border: 1px solid #e5e5e5;
+            color: #262626;
+        }
+        /* 代码块 */
+        .prose pre {
+            background-color: #171717;
+            color: #fafafa;
+            padding: 1.25rem;
+            border-radius: 0.25rem;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .prose a {
+            color: #171717;
+            text-decoration: underline;
+            text-decoration-color: #d4d4d4;
+            text-underline-offset: 4px;
+            transition: text-decoration-color 0.2s;
+        }
+        .prose a:hover {
+            text-decoration-color: #171717;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-neutral-900 selection:text-white">
+
+    <!-- Header -->
+    <header class="py-8">
+        <div class="max-w-3xl mx-auto px-6 flex justify-between items-center">
+            <a href="minimal_portfolio.html" class="font-mono font-medium text-lg tracking-tight hover:text-neutral-600 transition-colors">
+                mizuki@space:~$
+            </a>
+            <nav class="flex space-x-6 text-sm font-medium">
+                <a href="about.html" class="text-neutral-500 hover:text-neutral-900 transition-colors">About</a>
+                <a href="projects.html" class="text-neutral-500 hover:text-neutral-900 transition-colors">Projects</a>
+                <a href="blog.html" class="text-neutral-900">Blog</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-3xl mx-auto px-6 py-8 w-full animate-fade-in">
+        
+        <!-- 返回上级 -->
+        <div class="mb-10">
+            <a href="blog.html" class="inline-flex items-center space-x-2 text-sm font-mono text-neutral-400 hover:text-neutral-900 transition-colors group">
+                <i class="ph ph-arrow-left transition-transform group-hover:-translate-x-1"></i>
+                <span>cd ../notes</span>
+            </a>
+        </div>
+
+        <!-- 文章头部元数据 -->
+        <header class="mb-12">
+            <h1 class="text-3xl font-medium tracking-tight text-neutral-900 mb-4 leading-snug">
+                系统架构设计师备考指南：系统规划篇
+            </h1>
+            <div class="flex flex-wrap items-center gap-4 text-sm font-mono text-neutral-500 border-b border-neutral-200 pb-6">
+                <time datetime="2026-05-12" class="flex items-center gap-1.5">
+                    <i class="ph ph-calendar-blank"></i> 2026-05-12
+                </time>
+                <div class="flex items-center gap-1.5">
+                    <i class="ph ph-folder"></i> Tech Blog
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i class="ph ph-clock"></i> 8 min read
+                </div>
+            </div>
+        </header>
+
+        <!-- Markdown 渲染内容区 (.prose) -->
+        <article class="prose w-full">
+            <p>
+                在软考高级“系统架构设计师”的考纲中，系统规划往往是被很多技术出身的考生忽略的部分。大部分人习惯于一上来就看微服务设计、数据库调优或者高并发架构，但系统规划决定了项目的商业价值和立项逻辑。
+            </p>
+
+            <p>
+                排斥冗余的业务包装并不意味着不需要理解业务目标。恰恰相反，只有理清了系统规划的底层逻辑，才能在后续的架构选型中做到有的放矢，避免过度设计。
+            </p>
+
+            <h2>一、 企业信息化与架构对齐</h2>
+            <p>
+                架构不是凭空产生的，它必须对齐企业的战略目标。在考试中，常见的考点集中在<strong>“战略数据规划”</strong>和<strong>“企业架构（EA）”</strong>模型。
+            </p>
+            <ul>
+                <li><strong>Zachman 框架</strong>：最经典的分类法。从谁（Who）、什么（What）、为什么（Why）、时间（When）、地点（Where）、如何（How）六个维度，结合不同的视角（规划者、所有者、设计者等）构成矩阵。</li>
+                <li><strong>TOGAF</strong>：关注点在架构开发方法（ADM），分为业务架构、数据架构、应用架构和技术架构。</li>
+            </ul>
+
+            <blockquote>
+                “系统架构师不应仅仅是高级程序员，而应该是能够将业务痛点翻译为技术路线图的桥梁。”
+            </blockquote>
+
+            <h2>二、 可行性分析的核心逻辑</h2>
+            <p>
+                可行性分析是系统规划的输出结果，主要包含四个维度的评估。考试中经常出现判断某项活动属于哪个可行性维度的选择题。
+            </p>
+            <ul>
+                <li><strong>经济可行性</strong>：成本收益分析（CBA）、投资回报率（ROI）。</li>
+                <li><strong>技术可行性</strong>：当前技术栈能否支撑目标，风险有多大。</li>
+                <li><strong>法律可行性</strong>：合规性、知识产权、数据出境等问题。</li>
+                <li><strong>用户使用可行性</strong>：组织的管理模式是否排斥新系统，用户的接受度如何。</li>
+            </ul>
+
+            <h2>三、 简单的数据流图（DFD）与代码映射</h2>
+            <p>
+                在规划阶段后期，我们通常会使用 DFD 来初步描绘系统边界。虽然这是古老的方法论，但其核心思想与现代的微服务边界划分依然相通。
+            </p>
+            <p>
+                例如，下面这段简单的 Python 数据处理流水线伪代码，本质上就是在代码层面落实数据流和转换节点：
+            </p>
+
+<pre><code class="language-python">from typing import List, Dict
+
+class DataProcessor:
+    def __init__(self, raw_data: List[Dict]):
+        self.raw_data = raw_data
+        self.cleaned_data = []
+
+    def run_pipeline(self) -> None:
+        """执行核心清洗流水线"""
+        for record in self.raw_data:
+            if self._validate(record):
+                transformed = self._transform(record)
+                self.cleaned_data.append(transformed)
+        
+        self._load_to_db(self.cleaned_data)
+
+    def _validate(self, record: Dict) -> bool:
+        # 对应 DFD 中的过滤节点
+        return record.get('status') == 'active'
+
+    def _transform(self, record: Dict) -> Dict:
+        # 对应 DFD 中的加工节点
+        record['normalized_score'] = record['score'] / 100.0
+        return record
+
+    def _load_to_db(self, data: List[Dict]) -> None:
+        # 对应 DFD 中的数据存储节点
+        pass</code></pre>
+
+            <p>
+                理解 <code>_validate</code> 和 <code>_transform</code> 这样的函数，就像理解 DFD 里的圆圈（加工进程）一样。不要觉得理论考试空洞，将其映射到你熟悉的 <code>Python</code> 或 <code>SQL</code> 逻辑中，理解起来会非常迅速。
+            </p>
+
+            <h2>小结</h2>
+            <p>
+                系统规划的难点不在于技术深度，而在于视角的转换。尝试跳出 IDE，站在项目发起人的角度看问题。下一篇笔记，我将整理关于“软件架构风格”的考点与踩坑记录。
+            </p>
+        </article>
+
+        <!-- 底部导航标签 -->
+        <div class="mt-16 pt-8 border-t border-neutral-200 flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-neutral-100 text-neutral-600 text-xs font-mono rounded border border-neutral-200"># System Architecture</span>
+            <span class="px-2 py-1 bg-neutral-100 text-neutral-600 text-xs font-mono rounded border border-neutral-200"># Exam Notes</span>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-8 mt-12 border-t border-neutral-200">
+        <div class="max-w-3xl mx-auto px-6 flex justify-between items-center text-xs font-mono text-neutral-400">
+            <p>&copy; 2026 Mizuki.</p>
+            <p>System Architecting...</p>
+        </div>
+    </footer>
+
+</body>
+</html>

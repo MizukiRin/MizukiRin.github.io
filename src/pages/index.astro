@@ -1,0 +1,309 @@
+---
+import { getCollection } from "astro:content";
+import { siteConfig } from "../config";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { formatDate } from "../utils/date";
+
+const filterDrafts = ({ data }: any) => import.meta.env.DEV || !data.draft;
+
+const techPosts = await getCollection("tech", filterDrafts);
+const dailyPosts = await getCollection("daily", filterDrafts);
+const diaryPosts = await getCollection("diary", filterDrafts);
+const projects = await getCollection("projects");
+
+// Sort and slice
+const latestTechPosts = techPosts
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+    .slice(0, 3);
+const latestDailyPosts = dailyPosts
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+    .slice(0, 2);
+const latestDiaryPosts = diaryPosts
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+    .slice(0, 2);
+const homepageProjects = projects
+    .sort((a, b) => b.data.order - a.data.order)
+    .slice(0, 2);
+
+const hasProjects = homepageProjects.length > 0;
+const hasBlogPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.length > 0;
+---
+
+<BaseLayout title="Mizuki | Minimalist" description={siteConfig.signature}>
+    <!-- Main Content -->
+    <main class="flex-grow max-w-3xl mx-auto px-6 py-12 space-y-28">
+        <!-- Intro Section -->
+        <section
+            id="about"
+            class="flex flex-col sm:flex-row sm:items-start gap-8 sm:gap-10 animate-fade-in"
+        >
+            <!-- 头像区域 (移至左侧，增大尺寸，添加跳转链接) -->
+            <a
+                href="/about"
+                class="w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden border border-neutral-200 bg-neutral-50 flex-shrink-0 flex items-center justify-center shadow-sm hover:border-neutral-400 transition-colors group cursor-pointer block"
+            >
+                {
+                    siteConfig.avatar ? (
+                        <img
+                            src={siteConfig.avatar}
+                            alt={siteConfig.name}
+                            class="w-full h-full object-cover group-hover:opacity transition-opacity"
+                        />
+                    ) : (
+                        <i class="ph ph-user text-6xl text-neutral-300 group-hover:text-neutral-500 transition-colors" />
+                    )
+                }
+            </a>
+
+            <!-- 文本与信息区域 (增加 sm:pt-2 进行顶部视觉微调) -->
+            <div class="space-y-4 flex-1 sm:pt-2">
+                <!-- 名字与 GitHub ID (添加跳转链接) -->
+                <div>
+                    <a href="/about" class="inline-block group">
+                        <h1
+                            class="text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 group-hover:underline decoration-neutral-300 underline-offset-4"
+                        >
+                            {siteConfig.name}
+                        </h1>
+                    </a>
+                    <br />
+                    <a
+                        href={`https://github.com/${siteConfig.github}`}
+                        target="_blank"
+                        class="text-neutral-400 hover:text-neutral-900 font-mono text-sm mt-1 inline-block transition-colors"
+                    >
+                        @{siteConfig.github}
+                    </a>
+                </div>
+
+                <!-- 标签化技能与身份 -->
+                {
+                    siteConfig.tags && siteConfig.tags.length > 0 && (
+                        <div class="flex flex-wrap gap-2 text-sm font-mono pt-1">
+                            {siteConfig.tags.map((tag) => (
+                                <span class="px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-md border border-neutral-200">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    )
+                }
+
+                <!-- 个人签名 -->
+                <div
+                    class="w-full bg-white border border-neutral-200 border-l-4 border-l-neutral-400 px-5 py-4 rounded-sm"
+                >
+                    <p
+                        class="text-neutral-500 text-sm leading-relaxed italic"
+                    >
+                        "{siteConfig.signature}"
+                    </p>
+                </div>
+
+                <!-- 社交/联系方式 -->
+                <div class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-neutral-500 text-sm">
+                    {siteConfig.email && (
+                        <div class="flex items-center space-x-2">
+                            <i class="ph ph-envelope-simple text-xl"></i>
+                            <span class="font-medium">{siteConfig.email}</span>
+                        </div>
+                    )}
+                    {siteConfig.x && (
+                        <div class="flex items-center space-x-2">
+                            <i class="ph ph-x-logo text-xl"></i>
+                            <span class="font-medium">{siteConfig.x}</span>
+                        </div>
+                    )}
+                    {siteConfig.xiaohongshu && (
+                        <div class="flex items-center space-x-2">
+                            <i class="ph ph-note text-xl"></i>
+                            <span class="font-medium">小红书: {siteConfig.xiaohongshu}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        {hasProjects && (
+            <section id="projects" class="space-y-8">
+                <div
+                    class="flex items-baseline justify-between border-b border-neutral-200 pb-4"
+                >
+                    <a href="/projects" class="group inline-block">
+                        <h2
+                            class="text-xl font-medium text-neutral-900 group-hover:underline decoration-neutral-300 underline-offset-4"
+                        >
+                            Projects
+                        </h2>
+                    </a>
+                    <span class="text-xs font-mono text-neutral-400"
+                        >/ Selected Work</span
+                    >
+                </div>
+
+                <div class="grid grid-cols-1 gap-6">
+                    {homepageProjects.map((project) => (
+                        <a
+                            href={`/projects?id=${project.id}`}
+                            class="group block border border-neutral-200 p-6 rounded-sm hover:border-neutral-900 transition-colors bg-white"
+                        >
+                            <div class="flex justify-between items-start mb-2">
+                                <h3
+                                    class="text-lg font-medium text-neutral-900 group-hover:underline decoration-neutral-300 underline-offset-4"
+                                >
+                                    {project.data.title}
+                                </h3>
+                                <i
+                                    class="ph ph-arrow-up-right text-neutral-400 group-hover:text-neutral-900 transition-colors"
+                                ></i>
+                            </div>
+                            <p class="text-neutral-600 text-sm mb-4">
+                                {project.data.description}
+                            </p>
+                            <div
+                                class="flex gap-3 font-mono text-xs text-neutral-500"
+                            >
+                                {project.data.tags.map((tag) => (
+                                    <span>{tag}</span>
+                                ))}
+                            </div>
+                        </a>
+                    ))}
+                </div>
+
+                <!-- More Projects Link -->
+                <div class="flex justify-end pt-2">
+                    <a
+                        href="/projects"
+                        class="group flex items-center space-x-1 text-sm font-mono text-neutral-500 hover:text-neutral-900 transition-colors"
+                    >
+                        <span
+                            class="group-hover:underline decoration-neutral-300 underline-offset-4"
+                            >View All Projects</span
+                        >
+                        <i
+                            class="ph ph-arrow-right text-base group-hover:translate-x-1 transition-transform"
+                        ></i>
+                    </a>
+                </div>
+            </section>
+        )}
+
+        <!-- Blog Section -->
+        {hasBlogPosts && (
+            <section id="blog" class="space-y-10">
+                <div
+                    class="flex items-baseline justify-between border-b border-neutral-200 pb-4"
+                >
+                    <a href="/blog" class="group inline-block">
+                        <h2
+                            class="text-xl font-medium text-neutral-900 group-hover:underline decoration-neutral-300 underline-offset-4"
+                        >
+                            Notes
+                        </h2>
+                    </a>
+                    <span class="text-xs font-mono text-neutral-400"
+                        >/ Writing</span
+                    >
+                </div>
+
+                <div class="space-y-12">
+                    <!-- Tech Blog -->
+                    {
+                        latestTechPosts.length > 0 && (
+                            <div class="space-y-4">
+                                <h3 class="text-sm font-mono text-neutral-500 uppercase tracking-widest">
+                                    Tech Blog
+                                </h3>
+                                <div class="flex flex-col">
+                                    {latestTechPosts.map((post) => (
+                                        <a
+                                            href={`/blog/${post.id}`}
+                                            class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+                                        >
+                                            <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4">
+                                                {post.data.title}
+                                            </span>
+                                            <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0">
+                                                {formatDate(post.data.date)}
+                                            </span>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    <!-- Daily Notes -->
+                    {
+                        latestDailyPosts.length > 0 && (
+                            <div class="space-y-4">
+                                <h3 class="text-sm font-mono text-neutral-500 uppercase tracking-widest">
+                                    Daily Notes
+                                </h3>
+                                <div class="flex flex-col">
+                                    {latestDailyPosts.map((post) => (
+                                        <a
+                                            href={`/blog/${post.id}`}
+                                            class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+                                        >
+                                            <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4">
+                                                {post.data.title}
+                                            </span>
+                                            <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0">
+                                                {formatDate(post.data.date)}
+                                            </span>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    <!-- Dev Diary -->
+                    {
+                        latestDiaryPosts.length > 0 && (
+                            <div class="space-y-4">
+                                <h3 class="text-sm font-mono text-neutral-500 uppercase tracking-widest">
+                                    Dev Diary
+                                </h3>
+                                <div class="flex flex-col">
+                                    {latestDiaryPosts.map((post) => (
+                                        <a
+                                            href={`/blog/${post.id}`}
+                                            class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+                                        >
+                                            <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4">
+                                                {post.data.title}
+                                            </span>
+                                            <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0">
+                                                {formatDate(post.data.date)}
+                                            </span>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
+                </div>
+
+                <!-- More Notes Link -->
+                <div class="flex justify-end pt-2">
+                    <a
+                        href="/blog"
+                        class="group flex items-center space-x-1 text-sm font-mono text-neutral-500 hover:text-neutral-900 transition-colors"
+                    >
+                        <span
+                            class="group-hover:underline decoration-neutral-300 underline-offset-4"
+                            >Read All Notes</span
+                        >
+                        <i
+                            class="ph ph-arrow-right text-base group-hover:translate-x-1 transition-transform"
+                        ></i>
+                    </a>
+                </div>
+            </section>
+        )}
+    </main>
+</BaseLayout>
