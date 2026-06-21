@@ -8,7 +8,7 @@ export const siteConfig = {
     x: "",
     xiaohongshu: "",
     // Personal Signature
-    signature: "Simple is better than complex. Complex is better than complicated.",
+    signature: "「夢にタブーなどない。 望むもの全てを手に入れろ」",
     // Personal Tags
     tags: ["Data Analysis", "Backend", "AI", "Python", "SQL"],
     // Profile Avatar Image (Github Avatar or any image URL. Set to null/empty string to use placeholder icon)
