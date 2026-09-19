@@ -4,7 +4,7 @@ import { siteConfig } from "../config";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { formatDate } from "../utils/date";
 
-const filterDrafts = ({ data }: any) => import.meta.env.DEV || !data.draft;
+const filterDrafts = ({ data }: any) => !data.draft;
 
 const techPosts = await getCollection("tech", filterDrafts);
 const dailyPosts = await getCollection("daily", filterDrafts);
