@@ -4,7 +4,7 @@
 export const siteConfig = {
     name: "Mizuki",
     github: "MizukiRin",
-    email: "rinmizuki123@gamil.com",
+    email: "rinmizuki123@gmail.com",
     x: "",
     xiaohongshu: "",
     // Personal Signature
