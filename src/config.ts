@@ -10,7 +10,7 @@ export const siteConfig = {
     // Personal Signature
     signature: "「夢にタブーなどない。 望むもの全てを手に入れろ」",
     // Personal Tags
-    tags: ["Data Analysis", "Backend", "AI", "Python", "SQL"],
+    tags: ["Data Analysis", "AI", "Python", "SQL", "Backend"],
     // Profile Avatar Image (Github Avatar or any image URL. Set to null/empty string to use placeholder icon)
     avatar: "https://avatars.githubusercontent.com/MizukiRin",
 };
