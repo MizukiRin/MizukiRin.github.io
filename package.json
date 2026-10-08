@@ -15,6 +15,7 @@
     "@tailwindcss/vite": "^4.3.1",
     "astro": "^6.4.7",
     "katex": "^0.18.7",
+    "mermaid": "^12.1.0",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",
     "tailwindcss": "^4.3.1"
