@@ -252,20 +252,23 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
             });
         });
 
-        // 页面初始化时检查 URL 参数 (?tab=daily) 或 sessionStorage 恢复对应 Tab
+        // 页面初始化时检查 URL 参数 (?tab=daily) 或显式传参
         const urlParams = new URLSearchParams(window.location.search);
         const queryTab = urlParams.get("tab");
-        const savedTab = sessionStorage.getItem("active_blog_tab");
-        const activeTab = queryTab || savedTab;
-
-        if (activeTab && ["tech", "daily", "diary"].includes(activeTab)) {
-            switchTab(activeTab);
+        
+        // 如果 URL 显式指定了 ?tab=...，优先使用；如果直接访问 /blog，默认显示 Tech Blog（清空上次留在 sessionStorage 的 daily）
+        let activeTab = "tech";
+        if (queryTab && ["tech", "daily", "diary"].includes(queryTab)) {
+            activeTab = queryTab;
             // 清除 URL 中的 ?tab= 参数保持地址栏干净
-            if (queryTab) {
-                const cleanUrl = window.location.pathname + window.location.hash;
-                window.history.replaceState({}, document.title, cleanUrl);
-            }
+            const cleanUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, document.title, cleanUrl);
+        } else {
+            // 没有 URL 参数时，清除历史记录，确保从首页点进来的默认是 Tech Blog
+            sessionStorage.removeItem("active_blog_tab");
         }
+
+        switchTab(activeTab);
 
         // Search toggle logic
         if (searchToggle && searchContainer && searchInput) {
@@ -295,8 +298,9 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
         overflow: hidden;
     }
     #search-container.open {
-        max-height: 60px;
+        max-height: 120px;
         opacity: 1;
+        padding-top: 0.25rem;
         margin-bottom: 1.5rem;
     }
     /* Empty state for search */

@@ -208,81 +208,28 @@ const hasBlogPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts
                     >
                 </div>
 
-                <div class="space-y-12">
+                <div class="space-y-4">
                     <!-- Tech Blog -->
                     {
-                        latestTechPosts.length > 0 && (
-                            <div class="space-y-4">
-                                <h3 class="text-sm font-mono text-neutral-500 uppercase tracking-widest">
-                                    Tech Blog
-                                </h3>
-                                <div class="flex flex-col">
-                                    {latestTechPosts.map((post) => (
-                                        <a
-                                            href={`/blog/${post.id}`}
-                                            class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
-                                        >
-                                            <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4">
-                                                {post.data.title}
-                                            </span>
-                                            <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0">
-                                                {formatDate(post.data.date)}
-                                            </span>
-                                        </a>
-                                    ))}
-                                </div>
+                        latestTechPosts.length > 0 ? (
+                            <div class="flex flex-col">
+                                {latestTechPosts.map((post) => (
+                                    <a
+                                        href={`/blog/${post.id}`}
+                                        class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+                                    >
+                                        <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4">
+                                            {post.data.title}
+                                        </span>
+                                        <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0">
+                                            {formatDate(post.data.date)}
+                                        </span>
+                                    </a>
+                                ))}
                             </div>
-                        )
-                    }
-
-                    <!-- Daily Notes -->
-                    {
-                        latestDailyPosts.length > 0 && (
-                            <div class="space-y-4">
-                                <h3 class="text-sm font-mono text-neutral-500 uppercase tracking-widest">
-                                    Daily Notes
-                                </h3>
-                                <div class="flex flex-col">
-                                    {latestDailyPosts.map((post) => (
-                                        <a
-                                            href={`/blog/${post.id}`}
-                                            class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
-                                        >
-                                            <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4">
-                                                {post.data.title}
-                                            </span>
-                                            <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0">
-                                                {formatDate(post.data.date)}
-                                            </span>
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    }
-
-                    <!-- Dev Diary -->
-                    {
-                        latestDiaryPosts.length > 0 && (
-                            <div class="space-y-4">
-                                <h3 class="text-sm font-mono text-neutral-500 uppercase tracking-widest">
-                                    Dev Diary
-                                </h3>
-                                <div class="flex flex-col">
-                                    {latestDiaryPosts.map((post) => (
-                                        <a
-                                            href={`/blog/${post.id}`}
-                                            class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
-                                        >
-                                            <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4">
-                                                {post.data.title}
-                                            </span>
-                                            <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0">
-                                                {formatDate(post.data.date)}
-                                            </span>
-                                        </a>
-                                    ))}
-                                </div>
+                        ) : (
+                            <div class="text-center py-10 text-neutral-400 font-mono text-xs">
+                                <p>No tech blogs published yet.</p>
                             </div>
                         )
                     }
