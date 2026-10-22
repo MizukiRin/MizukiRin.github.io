@@ -1,0 +1,1067 @@
+---
+// src/components/DailyFeed.astro
+import { siteConfig } from "../config";
+import { formatDate } from "../utils/date";
+
+interface Props {
+  archivePosts?: any[];
+}
+
+const { archivePosts = [] } = Astro.props;
+---
+
+<div id="daily-feed-container" class="space-y-6">
+  <!-- 顶部状态栏与操作栏 -->
+  <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
+    <div class="flex items-center space-x-2">
+      <span class="text-xs font-mono uppercase tracking-wider text-neutral-400">Timeline / Memos</span>
+      <span id="daily-count-badge" class="hidden text-[11px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">0</span>
+    </div>
+
+    <!-- 用户身份与登录状态 -->
+    <div id="daily-auth-section" class="flex items-center space-x-3 text-xs font-mono">
+      <!-- 未登录状态：简约的 GitHub 登录按钮 -->
+      <button
+        id="github-login-btn"
+        class="inline-flex items-center space-x-1.5 text-neutral-500 hover:text-neutral-900 border border-neutral-200 hover:border-neutral-400 bg-white px-2.5 py-1 rounded transition-all shadow-xs cursor-pointer"
+        title="使用 GitHub 登录以发布动态"
+      >
+        <i class="ph ph-github-logo text-sm"></i>
+        <span>GitHub 登录</span>
+      </button>
+
+      <!-- 已登录状态 (默认隐藏，登录后显示作者信息与发帖/退出按钮) -->
+      <div id="daily-user-panel" class="hidden items-center space-x-3">
+        <div class="flex items-center space-x-1.5">
+          <img id="user-avatar" src="" alt="avatar" class="w-5 h-5 rounded-full border border-neutral-200" />
+          <span id="user-name" class="text-neutral-800 font-medium"></span>
+        </div>
+
+        <button
+          id="toggle-compose-btn"
+          class="hidden items-center space-x-1 bg-neutral-900 hover:bg-neutral-800 text-white px-2.5 py-1 rounded transition-colors shadow-xs cursor-pointer"
+        >
+          <i class="ph ph-plus"></i>
+          <span>发动态</span>
+        </button>
+
+        <button
+          id="logout-btn"
+          class="text-neutral-400 hover:text-red-600 transition-colors cursor-pointer"
+          title="退出登录"
+        >
+          <i class="ph ph-sign-out text-sm"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 发帖卡片 (默认隐藏，仅博主登录后可展开) -->
+  <div id="daily-composer" class="hidden bg-white border border-neutral-200 rounded-sm p-4 space-y-3 shadow-xs animate-fade-in">
+    <div class="flex items-center justify-between text-xs text-neutral-400 font-mono">
+      <span>发布新随想</span>
+      <span class="text-[11px]">支持 Markdown · 支持截图 Ctrl+V 直接粘贴</span>
+    </div>
+
+    <!-- 文本输入框 -->
+    <textarea
+      id="daily-content-input"
+      rows="3"
+      placeholder="记录这一刻的想法、随想或日常碎片..."
+      class="w-full text-sm text-neutral-800 placeholder:text-neutral-300 border border-neutral-200 rounded-sm p-3 focus:outline-none focus:border-neutral-400 transition-colors resize-y font-sans leading-relaxed"
+    ></textarea>
+
+    <!-- 待上传图片预览列表 -->
+    <div id="image-preview-list" class="hidden grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+      <!-- 预览项由 JS 动态生成 -->
+    </div>
+
+    <!-- 工具栏与操作按钮 -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-neutral-100">
+      <div class="flex items-center space-x-2">
+        <!-- 上传图片按钮 -->
+        <label
+          for="image-file-input"
+          class="inline-flex items-center space-x-1 text-xs text-neutral-500 hover:text-neutral-900 cursor-pointer px-2 py-1 border border-dashed border-neutral-200 hover:border-neutral-400 rounded transition-colors"
+        >
+          <i class="ph ph-image text-sm"></i>
+          <span>添加图片</span>
+        </label>
+        <input
+          type="file"
+          id="image-file-input"
+          accept="image/*"
+          multiple
+          class="hidden"
+        />
+
+        <!-- 标签输入框 -->
+        <div class="flex items-center space-x-1 text-xs font-mono text-neutral-400">
+          <i class="ph ph-tag"></i>
+          <input
+            type="text"
+            id="daily-tags-input"
+            placeholder="标签 (空格分隔)"
+            class="bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-neutral-400 focus:outline-none py-0.5 px-1 text-xs text-neutral-600 placeholder:text-neutral-300 w-32 transition-colors"
+          />
+        </div>
+        <!-- 仅我可见勾选 -->
+        <label class="flex items-center space-x-1 text-xs font-mono text-neutral-400 hover:text-neutral-600 cursor-pointer select-none transition-colors" title="勾选后仅博主登录后可见，访客不可见">
+          <input
+            type="checkbox"
+            id="daily-private-input"
+            class="rounded border-neutral-300 text-neutral-900 focus:ring-0 w-3.5 h-3.5 cursor-pointer accent-neutral-900"
+          />
+          <span class="flex items-center space-x-0.5">
+            <i class="ph ph-lock text-xs"></i>
+            <span>仅我可见</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button
+          id="cancel-compose-btn"
+          type="button"
+          class="text-xs text-neutral-400 hover:text-neutral-600 px-2.5 py-1 cursor-pointer"
+        >
+          取消
+        </button>
+        <button
+          id="submit-post-btn"
+          type="button"
+          class="inline-flex items-center space-x-1.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs px-3.5 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs cursor-pointer"
+        >
+          <i id="submit-spinner" class="ph ph-spinner animate-spin hidden"></i>
+          <i id="submit-icon" class="ph ph-paper-plane-tilt"></i>
+          <span id="submit-text">发布</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 时间轴骨架屏 (加载中状态) -->
+  <div id="daily-skeleton" class="space-y-6 my-6">
+    <div class="flex items-start animate-pulse">
+      <div class="w-20 sm:w-28 shrink-0 text-right pr-3 sm:pr-5 pt-3.5 space-y-1.5">
+        <div class="h-3 w-16 bg-neutral-200 rounded ml-auto"></div>
+        <div class="h-3.5 w-8 bg-neutral-200 rounded ml-auto"></div>
+      </div>
+      <div class="relative flex flex-col items-center self-stretch shrink-0">
+        <div class="w-[2px] bg-neutral-200/80 grow"></div>
+        <div class="absolute top-4 w-3 h-3 rounded-full bg-neutral-300"></div>
+      </div>
+      <div class="flex-1 min-w-0 pl-3 sm:pl-6 pb-6">
+        <div class="bg-white border border-neutral-100 p-4 sm:p-5 rounded-sm space-y-3">
+          <div class="flex justify-between items-center pb-2 border-b border-neutral-100">
+            <div class="h-4 w-20 bg-neutral-100 rounded"></div>
+            <div class="h-3 w-28 bg-neutral-100 rounded"></div>
+          </div>
+          <div class="h-3 w-full bg-neutral-100 rounded"></div>
+          <div class="h-3 w-3/4 bg-neutral-100 rounded"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 时间轴动态流容器 (左侧时间，中间轴线，右侧卡片) -->
+  <div id="daily-posts-stream" class="my-6">
+    <!-- 时间轴由 JS 渲染 -->
+  </div>
+
+  <!-- 空状态提示 -->
+  <div id="daily-empty-state" class="hidden text-center py-12 text-neutral-400 font-mono text-xs">
+    <i class="ph ph-clock-counter-clockwise text-3xl mb-2 text-neutral-300"></i>
+    <p>No daily notes yet.</p>
+  </div>
+
+  <!-- 往期长文/Markdown 归档折叠区 (若存在历史 Markdown 文章) -->
+  {archivePosts.length > 0 && (
+    <div class="pt-8 border-t border-neutral-200/60 mt-8">
+      <details class="group">
+        <summary class="cursor-pointer text-xs font-mono text-neutral-400 hover:text-neutral-800 flex items-center space-x-1.5 transition-colors select-none py-1">
+          <i class="ph ph-caret-right transition-transform group-open:rotate-90"></i>
+          <span>往期长文日记归档 ({archivePosts.length} 篇)</span>
+        </summary>
+        <div class="space-y-2 mt-3 pl-4 border-l border-neutral-200">
+          {archivePosts.map((post) => (
+            <a
+              href={`/blog/${post.id}`}
+              class="group/item flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+            >
+              <span class="text-neutral-800 text-sm group-hover/item:underline decoration-neutral-300 underline-offset-4">
+                {post.data.title}
+              </span>
+              <span class="font-mono text-xs text-neutral-400 mt-0.5 sm:mt-0 shrink-0">
+                {formatDate(post.data.date)}
+              </span>
+            </a>
+          ))}
+        </div>
+      </details>
+    </div>
+  )}
+</div>
+
+<!-- 图片大图查看灯箱 (Lightbox Modal) -->
+<div id="lightbox-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4">
+  <button id="lightbox-close" class="absolute top-4 right-4 text-white/70 hover:text-white p-2 text-2xl transition-colors cursor-pointer">
+    <i class="ph ph-x"></i>
+  </button>
+  <img id="lightbox-img" src="" alt="Zoomed view" class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl transition-transform" />
+</div>
+
+<!-- 自定义确认模态框 (与博客极简设计风格保持一致：小圆角、柔和边框、黑白线条图标) -->
+<div id="daily-confirm-modal" class="hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4 transition-all">
+  <div class="bg-neutral-50/95 border border-neutral-300/80 rounded-sm shadow-xl max-w-sm w-full p-5 sm:p-6 space-y-4 animate-scale-in">
+    <div class="flex items-start space-x-3.5">
+      <div id="modal-icon-container" class="w-8 h-8 flex items-center justify-center shrink-0 text-neutral-800">
+        <i id="modal-icon" class="ph ph-trash text-xl"></i>
+      </div>
+      <div class="flex-1 min-w-0 pt-0.5">
+        <h4 id="modal-title" class="text-sm font-semibold text-neutral-900 leading-snug">确认操作</h4>
+        <p id="modal-message" class="text-xs text-neutral-500 mt-1.5 leading-relaxed">确定要继续执行此操作吗？</p>
+      </div>
+    </div>
+    <div class="flex items-center justify-end space-x-2 pt-3 border-t border-neutral-200/70">
+      <button
+        id="modal-cancel-btn"
+        type="button"
+        class="text-xs font-mono text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/60 px-3 py-1.5 rounded-sm transition-colors cursor-pointer"
+      >
+        取消
+      </button>
+      <button
+        id="modal-confirm-btn"
+        type="button"
+        class="inline-flex items-center space-x-1.5 text-xs font-mono bg-neutral-900 hover:bg-neutral-800 text-white px-3.5 py-1.5 rounded-sm transition-colors shadow-xs cursor-pointer border border-neutral-900"
+      >
+        <i id="modal-confirm-spinner" class="ph ph-spinner animate-spin hidden"></i>
+        <span id="modal-confirm-text">确定删除</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 客户端业务逻辑交互脚本 -->
+<script>
+  import { supabase, AUTHOR_GITHUB, BUCKET_NAME } from "../utils/supabase";
+
+  interface PostItem {
+    id: string;
+    content: string;
+    images?: string[];
+    tags?: string[];
+    author_github: string;
+    is_private?: boolean;
+    created_at: string;
+  }
+
+  // DOM 元素引用
+  const loginBtn = document.getElementById("github-login-btn");
+  const userPanel = document.getElementById("daily-user-panel");
+  const userAvatar = document.getElementById("user-avatar") as HTMLImageElement | null;
+  const userName = document.getElementById("user-name");
+  const logoutBtn = document.getElementById("logout-btn");
+  const toggleComposeBtn = document.getElementById("toggle-compose-btn");
+  const composer = document.getElementById("daily-composer");
+  const cancelComposeBtn = document.getElementById("cancel-compose-btn");
+  const contentInput = document.getElementById("daily-content-input") as HTMLTextAreaElement | null;
+  const imageFileInput = document.getElementById("image-file-input") as HTMLInputElement | null;
+  const imagePreviewList = document.getElementById("image-preview-list");
+  const tagsInput = document.getElementById("daily-tags-input") as HTMLInputElement | null;
+  const privateInput = document.getElementById("daily-private-input") as HTMLInputElement | null;
+  const submitBtn = document.getElementById("submit-post-btn") as HTMLButtonElement | null;
+  const submitSpinner = document.getElementById("submit-spinner");
+  const submitIcon = document.getElementById("submit-icon");
+  const submitText = document.getElementById("submit-text");
+  const streamContainer = document.getElementById("daily-posts-stream");
+  const skeleton = document.getElementById("daily-skeleton");
+  const emptyState = document.getElementById("daily-empty-state");
+  const countBadge = document.getElementById("daily-count-badge");
+  const lightboxModal = document.getElementById("lightbox-modal");
+  const lightboxImg = document.getElementById("lightbox-img") as HTMLImageElement | null;
+  const lightboxClose = document.getElementById("lightbox-close");
+
+  // 自定义优雅模态框引用
+  const confirmModal = document.getElementById("daily-confirm-modal");
+  const modalTitle = document.getElementById("modal-title");
+  const modalMessage = document.getElementById("modal-message");
+  const modalCancelBtn = document.getElementById("modal-cancel-btn");
+  const modalConfirmBtn = document.getElementById("modal-confirm-btn");
+  const modalConfirmText = document.getElementById("modal-confirm-text");
+  const modalConfirmSpinner = document.getElementById("modal-confirm-spinner");
+  const modalIconContainer = document.getElementById("modal-icon-container");
+  const modalIcon = document.getElementById("modal-icon");
+
+  let confirmModalResolve: ((val: boolean) => void) | null = null;
+
+  function showConfirmModal(options: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    isDanger?: boolean;
+  }): Promise<boolean> {
+    return new Promise((resolve) => {
+      confirmModalResolve = resolve;
+      if (modalTitle) modalTitle.textContent = options.title;
+      if (modalMessage) modalMessage.textContent = options.message;
+      if (modalConfirmText) modalConfirmText.textContent = options.confirmText || "确定";
+
+      if (modalConfirmBtn) {
+        modalConfirmBtn.className = "inline-flex items-center space-x-1.5 text-xs font-mono bg-neutral-900 hover:bg-neutral-800 text-white px-3.5 py-1.5 rounded-sm transition-colors shadow-xs cursor-pointer border border-neutral-900";
+      }
+      if (modalIconContainer) {
+        modalIconContainer.className = "w-8 h-8 flex items-center justify-center shrink-0 text-neutral-800";
+      }
+      if (modalIcon) {
+        modalIcon.className = options.isDanger ? "ph ph-trash text-xl text-neutral-800" : "ph ph-lock text-xl text-neutral-800";
+      }
+
+      confirmModal?.classList.remove("hidden");
+    });
+  }
+
+  function hideConfirmModal(result: boolean) {
+    confirmModal?.classList.add("hidden");
+    if (confirmModalResolve) {
+      confirmModalResolve(result);
+      confirmModalResolve = null;
+    }
+  }
+
+  modalCancelBtn?.addEventListener("click", () => hideConfirmModal(false));
+  modalConfirmBtn?.addEventListener("click", () => hideConfirmModal(true));
+  confirmModal?.addEventListener("click", (e) => {
+    if (e.target === confirmModal) hideConfirmModal(false);
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && confirmModal && !confirmModal.classList.contains("hidden")) {
+      hideConfirmModal(false);
+    }
+  });
+
+  let selectedFiles: File[] = [];
+  let currentUser: any = null;
+  let isAuthor = false;
+
+  // 格式化时间戳：年月日 时分
+  function formatFullDate(dateString: string): string {
+    const d = new Date(dateString);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hour = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hour}:${min}`;
+  }
+
+  // 卡片时间格式化：6小时内显示相对时间（刚刚/X分钟前/X小时前），6小时前显示具体时间（YYYY-MM-DD HH:mm）
+  function formatCardTime(dateString: string): { display: string; title: string } {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+
+    const fullStr = formatFullDate(dateString);
+
+    if (diffMs < 0 || diffMin < 1) {
+      return { display: "刚刚", title: fullStr };
+    }
+    if (diffMin < 60) {
+      return { display: `${diffMin}分钟前`, title: fullStr };
+    }
+    if (diffHour < 6) {
+      return { display: `${diffHour}小时前`, title: fullStr };
+    }
+    // 超过6小时，直接显示具体时间
+    return { display: fullStr, title: fullStr };
+  }
+
+  // 渲染单个时间轴动态节点 (左侧：年月写在一起，下面写日；同一天多条默认只亮最新一条，点选或hover时当前条目日期高亮放大变深)
+  function renderTimelineNode(post: PostItem, isFirstOfDay: boolean): HTMLElement {
+    const article = document.createElement("article");
+    article.id = `post-${post.id}`;
+    article.className = "timeline-article flex items-start group relative animate-fade-in";
+
+    const postDate = new Date(post.created_at);
+    const yearMonthStr = `${postDate.getFullYear()}.${String(postDate.getMonth() + 1).padStart(2, "0")}`;
+    const dayNum = String(postDate.getDate()).padStart(2, "0");
+    const cardTimeInfo = formatCardTime(post.created_at);
+
+    // 1. 左侧：纯文字日期（第一行 2026.10，第二行纯数字日如 20，无方框，无“日”字）
+    const leftCol = document.createElement("div");
+    leftCol.className = "date-col w-20 sm:w-28 shrink-0 text-right pr-3 sm:pr-5 pt-3 select-none font-mono";
+    leftCol.innerHTML = `
+      <div class="text-[11px] font-mono tracking-wider text-neutral-400 group-hover:text-neutral-600 group-[.is-active]:text-neutral-900 group-[.is-active]:font-semibold transition-colors leading-none">
+        ${yearMonthStr}
+      </div>
+      <div class="flex items-baseline justify-end mt-1.5 leading-none origin-right group-hover:scale-105 group-[.is-active]:scale-110 transition-transform duration-200">
+        <span class="text-2xl sm:text-3xl font-mono font-bold text-neutral-750 group-hover:text-neutral-950 group-[.is-active]:text-neutral-950 group-[.is-active]:font-extrabold transition-colors tracking-tight">
+          ${dayNum}
+        </span>
+      </div>
+    `;
+    article.appendChild(leftCol);
+
+    // 2. 中间：垂直连接线 + 时间轴圆点锚点
+    const midCol = document.createElement("div");
+    midCol.className = "relative flex flex-col items-center self-stretch shrink-0";
+    midCol.innerHTML = `
+      <div class="w-[2px] bg-neutral-200/90 grow group-[.is-active]:bg-neutral-400 transition-colors"></div>
+      <div class="absolute top-4 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-300 group-hover:border-neutral-900 group-hover:scale-125 group-[.is-active]:scale-125 group-[.is-active]:border-neutral-900 group-[.is-active]:bg-neutral-900 transition-all shadow-2xs flex items-center justify-center">
+        <div class="w-1.5 h-1.5 rounded-full bg-neutral-400 group-hover:bg-neutral-900 group-[.is-active]:bg-white transition-colors"></div>
+      </div>
+    `;
+    article.appendChild(midCol);
+
+    // 3. 右侧：动态卡片主体
+    const rightCol = document.createElement("div");
+    rightCol.className = "flex-1 min-w-0 pl-3 sm:pl-6 pb-8";
+
+    const card = document.createElement("div");
+    card.className = "bg-white border border-neutral-200/90 rounded-sm p-4 sm:p-5 space-y-3 transition-all hover:border-neutral-400 hover:shadow-xs group-[.is-active]:border-neutral-900 group-[.is-active]:shadow-sm cursor-pointer";
+
+    // 点选卡片激活高亮逻辑
+    card.addEventListener("click", (e) => {
+      // 避免点击卡片内部链接或删除按钮时触发
+      if ((e.target as HTMLElement).closest("a, button, input, label")) return;
+      const isActive = article.classList.contains("is-active");
+      document.querySelectorAll(".timeline-article.is-active").forEach((el) => {
+        el.classList.remove("is-active");
+      });
+      if (!isActive) {
+        article.classList.add("is-active");
+      }
+    });
+
+    // 卡片顶部：左侧作者信息，右侧详细时间与相对时间、删除按钮
+    const header = document.createElement("div");
+    header.className = "flex items-center justify-between pb-2 border-b border-neutral-100";
+
+    const leftInfo = document.createElement("div");
+    leftInfo.className = "flex items-center space-x-2";
+    leftInfo.innerHTML = `
+      <img src="https://avatars.githubusercontent.com/${post.author_github}" alt="${post.author_github}" class="w-5 h-5 rounded-full border border-neutral-200 object-cover" />
+      <span class="text-xs font-medium text-neutral-800">${post.author_github}</span>
+      ${post.author_github.toLowerCase() === AUTHOR_GITHUB.toLowerCase() ? '<span class="text-[9px] font-mono bg-neutral-900 text-white px-1 py-0.2 rounded-xs">Author</span>' : ''}
+    `;
+
+    const rightInfo = document.createElement("div");
+    rightInfo.className = "flex items-center space-x-2 text-xs font-mono text-neutral-400";
+    
+    // 如果是非博主访客查看（理论上已被过滤，作为保底展示）
+    if (!isAuthor && post.is_private) {
+      rightInfo.innerHTML += `
+        <span class="inline-flex items-center space-x-0.5 text-[10px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded-sm border border-neutral-200" title="该动态仅博主本人可见">
+          <i class="ph ph-lock text-xs"></i>
+          <span>仅我可见</span>
+        </span>
+      `;
+    }
+
+    rightInfo.innerHTML += `
+      <time title="${postDate.toLocaleString()}" class="transition-colors hover:text-neutral-600">${cardTimeInfo.display}</time>
+    `;
+
+    if (isAuthor) {
+      const isPriv = Boolean(post.is_private);
+      // 切换公开/私密状态按钮 (小锁开关：仅我可见时小锁关闭锁定，公开时小锁打开)
+      const privacyBtn = document.createElement("button");
+      privacyBtn.className = isPriv
+        ? "inline-flex items-center space-x-1 text-[11px] font-mono text-neutral-800 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 px-1.5 py-0.5 rounded-sm transition-colors cursor-pointer ml-1 select-none"
+        : "inline-flex items-center space-x-1 text-[11px] font-mono text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 border border-transparent hover:border-neutral-200 px-1.5 py-0.5 rounded-sm transition-colors cursor-pointer ml-1 select-none";
+      privacyBtn.title = isPriv ? "当前状态：仅我可见 (点击切换为公开)" : "当前状态：公开 (点击切换为仅我可见)";
+      privacyBtn.innerHTML = isPriv
+        ? '<i class="ph ph-lock-key text-xs text-neutral-800"></i><span>仅我</span>'
+        : '<i class="ph ph-lock-key-open text-xs text-neutral-400 hover:text-neutral-700"></i><span class="text-neutral-400">公开</span>';
+      privacyBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await handleTogglePrivacy(post.id, !isPriv, privacyBtn);
+      });
+      rightInfo.appendChild(privacyBtn);
+
+      // 删除按钮 (黑白素雅线条风格)
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "text-neutral-300 hover:text-neutral-900 transition-colors p-1 ml-0.5 rounded-sm hover:bg-neutral-100 cursor-pointer";
+      deleteBtn.title = "彻底删除动态及关联图片";
+      deleteBtn.innerHTML = '<i class="ph ph-trash text-sm"></i>';
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleDeletePost(post);
+      });
+      rightInfo.appendChild(deleteBtn);
+    }
+
+    header.appendChild(leftInfo);
+    header.appendChild(rightInfo);
+    card.appendChild(header);
+
+    // 内容区（解析换行与简单链接）
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "text-sm text-neutral-800 leading-relaxed font-sans break-words whitespace-pre-wrap";
+    
+    const escaped = post.content
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const linkified = escaped.replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-neutral-900 underline decoration-neutral-300 hover:decoration-neutral-900 underline-offset-2 break-all">$1</a>'
+    );
+    contentDiv.innerHTML = linkified;
+    card.appendChild(contentDiv);
+
+    // 标签区
+    if (post.tags && post.tags.length > 0) {
+      const tagsDiv = document.createElement("div");
+      tagsDiv.className = "flex flex-wrap gap-1.5 pt-1";
+      tagsDiv.innerHTML = post.tags
+        .filter(t => t.trim().length > 0)
+        .map(t => `<span class="text-[11px] font-mono text-neutral-500 bg-neutral-50 border border-neutral-200/60 px-1.5 py-0.5 rounded">#${t.replace(/^#/, '')}</span>`)
+        .join("");
+      card.appendChild(tagsDiv);
+    }
+
+    // 图片九宫格区
+    if (post.images && post.images.length > 0) {
+      const imgContainer = document.createElement("div");
+      const count = post.images.length;
+
+      if (count === 1) {
+        imgContainer.className = "pt-1";
+        imgContainer.innerHTML = `
+          <img src="${post.images[0]}" alt="image" loading="lazy" class="max-h-80 w-auto rounded border border-neutral-200 cursor-zoom-in hover:opacity-95 transition-opacity object-cover" data-src="${post.images[0]}" />
+        `;
+      } else if (count === 2 || count === 4) {
+        imgContainer.className = "grid grid-cols-2 gap-2 pt-1 max-w-md";
+        imgContainer.innerHTML = post.images
+          .map(url => `<img src="${url}" alt="image" loading="lazy" class="w-full aspect-square rounded border border-neutral-200 object-cover cursor-zoom-in hover:opacity-95 transition-opacity" data-src="${url}" />`)
+          .join("");
+      } else {
+        imgContainer.className = "grid grid-cols-3 gap-2 pt-1 max-w-lg";
+        imgContainer.innerHTML = post.images
+          .map(url => `<img src="${url}" alt="image" loading="lazy" class="w-full aspect-square rounded border border-neutral-200 object-cover cursor-zoom-in hover:opacity-95 transition-opacity" data-src="${url}" />`)
+          .join("");
+      }
+
+      imgContainer.querySelectorAll("img").forEach(img => {
+        img.addEventListener("click", () => {
+          const src = img.getAttribute("data-src") || img.src;
+          openLightbox(src);
+        });
+      });
+
+      card.appendChild(imgContainer);
+    }
+
+    rightCol.appendChild(card);
+    article.appendChild(rightCol);
+
+    return article;
+  }
+
+  // 大图预览交互
+  function openLightbox(src: string) {
+    if (!lightboxModal || !lightboxImg) return;
+    lightboxImg.src = src;
+    lightboxModal.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeLightbox() {
+    if (!lightboxModal) return;
+    lightboxModal.classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+
+  lightboxClose?.addEventListener("click", closeLightbox);
+  lightboxModal?.addEventListener("click", (e) => {
+    if (e.target === lightboxModal) closeLightbox();
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeLightbox();
+  });
+
+  // 更新待上传图片预览
+  function updateImagePreviews() {
+    if (!imagePreviewList) return;
+    if (selectedFiles.length === 0) {
+      imagePreviewList.classList.add("hidden");
+      imagePreviewList.innerHTML = "";
+      return;
+    }
+
+    imagePreviewList.classList.remove("hidden");
+    imagePreviewList.innerHTML = "";
+
+    selectedFiles.forEach((file, index) => {
+      const item = document.createElement("div");
+      item.className = "relative group aspect-square rounded border border-neutral-200 overflow-hidden bg-neutral-50";
+
+      const img = document.createElement("img");
+      img.className = "w-full h-full object-cover";
+      img.src = URL.createObjectURL(file);
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors cursor-pointer";
+      delBtn.innerHTML = '<i class="ph ph-x"></i>';
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectedFiles.splice(index, 1);
+        updateImagePreviews();
+      });
+
+      item.appendChild(img);
+      item.appendChild(delBtn);
+      imagePreviewList.appendChild(item);
+    });
+  }
+
+  // 处理图片选择
+  imageFileInput?.addEventListener("change", () => {
+    if (!imageFileInput.files) return;
+    const newFiles = Array.from(imageFileInput.files);
+    selectedFiles = [...selectedFiles, ...newFiles].slice(0, 9);
+    imageFileInput.value = "";
+    updateImagePreviews();
+  });
+
+  // 处理直接粘贴截图 (Ctrl+V)
+  contentInput?.addEventListener("paste", (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          selectedFiles.push(file);
+          if (selectedFiles.length > 9) selectedFiles = selectedFiles.slice(0, 9);
+          updateImagePreviews();
+        }
+      }
+    }
+  });
+
+  // 请求序号，防止并发竞争导致重复渲染
+  let currentLoadSeq = 0;
+
+  // 加载时间轴动态 (访客只加载公开动态，博主登录后加载全部包含私密动态)
+  async function loadPosts() {
+    const seq = ++currentLoadSeq;
+    try {
+      if (skeleton) skeleton.style.display = "block";
+
+      const { data, error } = await supabase
+        .from("daily_posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      // 如果有更新的请求发起，丢弃此过期请求的结果
+      if (seq !== currentLoadSeq) return;
+
+      if (skeleton) skeleton.style.display = "none";
+
+      if (error) {
+        console.error("加载动态失败:", error);
+        return;
+      }
+
+      if (!streamContainer) return;
+      // 关键防重：在插入新节点前统一清空容器
+      streamContainer.innerHTML = "";
+
+      // 过滤数据：访客只看公开动态，博主本人查看全部（公开 + 私密）
+      const visiblePosts = (data || []).filter((post: PostItem) => {
+        if (isAuthor) return true;
+        return !post.is_private;
+      });
+
+      if (visiblePosts.length === 0) {
+        if (emptyState) emptyState.classList.remove("hidden");
+        if (countBadge) countBadge.classList.add("hidden");
+        return;
+      }
+
+      if (emptyState) emptyState.classList.add("hidden");
+      if (countBadge) {
+        countBadge.textContent = String(visiblePosts.length);
+        countBadge.classList.remove("hidden");
+      }
+
+      // 按日期（年-月-日）进行分组容器封装，便于 CSS 管理同日内焦点联动
+      const dayGroups = new Map<string, PostItem[]>();
+      visiblePosts.forEach((post) => {
+        const postDate = new Date(post.created_at);
+        const dateKey = `${postDate.getFullYear()}-${postDate.getMonth() + 1}-${postDate.getDate()}`;
+        if (!dayGroups.has(dateKey)) {
+          dayGroups.set(dateKey, []);
+        }
+        dayGroups.get(dateKey)!.push(post);
+      });
+
+      dayGroups.forEach((postsInDay) => {
+        const dayContainer = document.createElement("div");
+        dayContainer.className = "timeline-day-group";
+
+        postsInDay.forEach((post) => {
+          dayContainer.appendChild(renderTimelineNode(post));
+        });
+
+        streamContainer.appendChild(dayContainer);
+      });
+    } catch (err) {
+      console.error("请求异常:", err);
+      if (seq === currentLoadSeq && skeleton) skeleton.style.display = "none";
+    }
+  }
+
+  // 上传图片到 Supabase Storage
+  async function uploadImage(file: File): Promise<string> {
+    const ext = file.name.split(".").pop() || "png";
+    const cleanName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+    const filePath = `daily/${cleanName}`;
+
+    const { error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, file, { cacheControl: "31536000", upsert: false });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+    return data.publicUrl;
+  }
+
+  // 提交发布动态
+  async function handlePublish() {
+    if (!contentInput || !submitBtn) return;
+    const content = contentInput.value.trim();
+
+    if (!content && selectedFiles.length === 0) {
+      alert("请输入内容或添加图片后再发布！");
+      return;
+    }
+
+    if (!currentUser || !isAuthor) {
+      alert("只有博主本人可以发布动态。");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitSpinner?.classList.remove("hidden");
+    submitIcon?.classList.add("hidden");
+    if (submitText) submitText.textContent = "发布中...";
+
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of selectedFiles) {
+        try {
+          const url = await uploadImage(file);
+          uploadedUrls.push(url);
+        } catch (uploadErr: any) {
+          console.error("图片上传失败:", uploadErr);
+          alert(`图片上传失败: ${uploadErr.message || '请确保 Supabase Storage 已创建 daily-images 公开存储桶'}`);
+          throw uploadErr;
+        }
+      }
+
+      const rawTags = tagsInput?.value.trim() || "";
+      const tags = rawTags
+        ? rawTags.split(/\s+/).map((t) => t.replace(/^#/, "").trim()).filter(Boolean)
+        : [];
+
+      const isPrivate = privateInput ? privateInput.checked : false;
+      const githubUsername = currentUser.user_metadata?.user_name || AUTHOR_GITHUB;
+
+      const { data, error } = await supabase
+        .from("daily_posts")
+        .insert([
+          {
+            content,
+            images: uploadedUrls,
+            tags,
+            author_github: githubUsername,
+            is_private: isPrivate,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      contentInput.value = "";
+      if (tagsInput) tagsInput.value = "";
+      if (privateInput) privateInput.checked = false;
+      selectedFiles = [];
+      updateImagePreviews();
+      composer?.classList.add("hidden");
+
+      // 重新加载时间轴列表
+      await loadPosts();
+    } catch (err: any) {
+      console.error("发布失败:", err);
+      alert(`发布失败: ${err.message || '请检查权限或网络连接'}`);
+    } finally {
+      submitBtn.disabled = false;
+      submitSpinner?.classList.add("hidden");
+      submitIcon?.classList.remove("hidden");
+      if (submitText) submitText.textContent = "发布";
+    }
+  }
+
+  // 切换某条动态的隐私可见性 (公开 <-> 仅我可见)
+  async function handleTogglePrivacy(postId: string, newPrivateState: boolean, btn?: HTMLButtonElement) {
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner animate-spin text-xs"></i><span>处理中</span>';
+      }
+
+      const { data, error } = await supabase
+        .from("daily_posts")
+        .update({ is_private: newPrivateState })
+        .eq("id", postId)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      console.log(`[DailyFeed] 成功将动态 ${postId} 可见性更新为:`, newPrivateState, data);
+
+      // 重新加载并渲染动态列表
+      await loadPosts();
+    } catch (err: any) {
+      console.error("切换可见性失败:", err);
+      alert(`更新可见性失败: ${err.message || '请检查网络或 Supabase RLS 策略'}`);
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // 删除某条动态 (自定义优雅模态弹窗 + 联动删除 Storage 图片)
+  async function handleDeletePost(post: PostItem) {
+    const hasImages = post.images && post.images.length > 0;
+    const confirmed = await showConfirmModal({
+      title: "删除动态",
+      message: hasImages
+        ? "确定要删除这条动态吗？包含的图片将从云端存储桶一并彻底清除，此操作无法撤销。"
+        : "确定要彻底删除这条动态吗？删除后内容无法恢复。",
+      confirmText: "确定删除",
+      isDanger: true,
+    });
+
+    if (!confirmed) return;
+
+    try {
+      // 1. 如果包含图片，解析文件路径并联动删除 Storage 中的文件，不留孤儿数据
+      if (hasImages && post.images) {
+        const filePathsToDelete: string[] = [];
+        post.images.forEach((url) => {
+          // 例如从 https://.../storage/v1/object/public/daily-images/daily/1234_abc.png 提取 daily/1234_abc.png
+          const parts = url.split(`/${BUCKET_NAME}/`);
+          if (parts.length > 1) {
+            filePathsToDelete.push(parts[1]);
+          }
+        });
+
+        if (filePathsToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from(BUCKET_NAME)
+            .remove(filePathsToDelete);
+          if (storageError) {
+            console.warn("Storage 图片清理异常 (已忽略以保证动态顺利删除):", storageError);
+          }
+        }
+      }
+
+      // 2. 从数据库中彻底删除动态记录
+      const { error } = await supabase
+        .from("daily_posts")
+        .delete()
+        .eq("id", post.id);
+
+      if (error) {
+        throw error;
+      }
+
+      const card = document.getElementById(`post-${post.id}`);
+      if (card) {
+        card.style.opacity = "0";
+        card.style.transform = "scale(0.95)";
+        setTimeout(() => {
+          card.remove();
+          if (countBadge) {
+            const currentCount = Math.max(0, parseInt(countBadge.textContent || "1", 10) - 1);
+            countBadge.textContent = String(currentCount);
+            if (currentCount === 0 && emptyState) emptyState.classList.remove("hidden");
+          }
+        }, 300);
+      }
+    } catch (err: any) {
+      console.error("删除失败:", err);
+      alert(`删除失败: ${err.message}`);
+    }
+  }
+
+  // 认证状态监听与处理
+  async function initAuth() {
+    // 监听认证状态变化（supabase 客户端初始化时会自动触发 INITIAL_SESSION）
+    supabase.auth.onAuthStateChange((_event, session) => {
+      handleAuthState(session?.user || null);
+    });
+
+    // 如果 URL 带有 OAuth 回调参数，静默清理地址栏，避免后续重新授权冲突
+    if (window.location.hash.includes("access_token") || window.location.search.includes("code=")) {
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 800);
+    }
+  }
+
+  function handleAuthState(user: any) {
+    currentUser = user;
+    if (user) {
+      const ghUsername = user.user_metadata?.user_name || user.email?.split("@")[0] || "";
+      isAuthor = ghUsername.toLowerCase() === AUTHOR_GITHUB.toLowerCase();
+
+      // 彻底隐藏登录按钮
+      if (loginBtn) {
+        loginBtn.style.display = "none";
+        loginBtn.classList.add("hidden");
+        loginBtn.classList.remove("inline-flex");
+      }
+
+      // 显示用户面板
+      if (userPanel) {
+        userPanel.style.display = "flex";
+        userPanel.classList.remove("hidden");
+        userPanel.classList.add("flex");
+      }
+
+      if (userAvatar) userAvatar.src = user.user_metadata?.avatar_url || `https://avatars.githubusercontent.com/${ghUsername}`;
+      if (userName) userName.textContent = `@${ghUsername}`;
+
+      if (isAuthor) {
+        if (toggleComposeBtn) {
+          toggleComposeBtn.style.display = "inline-flex";
+          toggleComposeBtn.classList.remove("hidden");
+          toggleComposeBtn.classList.add("inline-flex");
+        }
+      } else {
+        if (toggleComposeBtn) {
+          toggleComposeBtn.style.display = "none";
+          toggleComposeBtn.classList.add("hidden");
+        }
+      }
+    } else {
+      isAuthor = false;
+
+      // 恢复显示登录按钮
+      if (loginBtn) {
+        loginBtn.style.display = "inline-flex";
+        loginBtn.classList.remove("hidden");
+        loginBtn.classList.add("inline-flex");
+      }
+
+      // 隐藏用户面板与发帖框
+      if (userPanel) {
+        userPanel.style.display = "none";
+        userPanel.classList.add("hidden");
+        userPanel.classList.remove("flex");
+      }
+
+      if (toggleComposeBtn) {
+        toggleComposeBtn.style.display = "none";
+        toggleComposeBtn.classList.add("hidden");
+      }
+      composer?.classList.add("hidden");
+    }
+
+    // 重新加载并渲染动态列表（同步作者删除操作权限）
+    loadPosts();
+  }
+
+  // 事件监听绑定
+  loginBtn?.addEventListener("click", async () => {
+    try {
+      // 记录激活 tab 到 sessionStorage 并拼入 redirect 参数，确保登录后直接跳回 daily
+      sessionStorage.setItem("active_blog_tab", "daily");
+      const cleanRedirectUrl = `${window.location.origin}${window.location.pathname}?tab=daily`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: cleanRedirectUrl,
+        },
+      });
+      if (error) {
+        console.error("GitHub 登录失败:", error);
+        alert("登录失败: " + error.message);
+      }
+    } catch (err: any) {
+      console.error("登录异常:", err);
+      alert("登录异常: " + (err.message || err));
+    }
+  });
+
+  logoutBtn?.addEventListener("click", async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("退出异常:", e);
+    }
+    // 清除 URL hash/query，并刷新页面彻底重置所有本地内存状态
+    window.history.replaceState({}, document.title, window.location.pathname);
+    window.location.reload();
+  });
+
+  toggleComposeBtn?.addEventListener("click", () => {
+    composer?.classList.toggle("hidden");
+    if (!composer?.classList.contains("hidden")) {
+      contentInput?.focus();
+    }
+  });
+
+  cancelComposeBtn?.addEventListener("click", () => {
+    composer?.classList.add("hidden");
+  });
+
+  submitBtn?.addEventListener("click", handlePublish);
+
+  // 初始化执行
+  initAuth();
+</script>
+
+<style>
+  /* 左侧日期平滑过渡效果 */
+  :global(.date-col) {
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s ease, filter 0.25s ease;
+  }
+
+  /* 默认状态：同一天中第一条（最新一条）高亮呈现（opacity: 1），其余条目保持淡化（opacity: 0.18） */
+  :global(.timeline-day-group .timeline-article:first-child .date-col) {
+    opacity: 1;
+  }
+  :global(.timeline-day-group .timeline-article:not(:first-child) .date-col) {
+    opacity: 0.18;
+  }
+
+  /* 核心联动：只要同日期下有非最新（not:first-child）的卡片被悬停（:hover）或点击激活（.is-active），最新一条（:first-child）立即变浅变淡（opacity: 0.18）！ */
+  :global(.timeline-day-group:has(.timeline-article:not(:first-child):hover) .timeline-article:first-child:not(:hover) .date-col),
+  :global(.timeline-day-group:has(.timeline-article:not(:first-child).is-active) .timeline-article:first-child:not(.is-active) .date-col) {
+    opacity: 0.18 !important;
+  }
+
+  /* 当前被悬停或处于选中激活状态的任意卡片，其对应左侧日期 100% 显现并加深聚焦 */
+  :global(.timeline-day-group .timeline-article:hover .date-col),
+  :global(.timeline-day-group .timeline-article.is-active .date-col) {
+    opacity: 1 !important;
+  }
+</style>

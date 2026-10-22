@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { formatDate } from "../../utils/date";
+import DailyFeed from "../../components/DailyFeed.astro";
 
 const filterDrafts = ({ data }: any) => !data.draft;
 
@@ -85,7 +86,7 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
                 <!-- 空状态提示 (搜索无结果时显示) -->
                 <div
                     id="empty-state"
-                    class="text-center py-12 text-neutral-400 font-mono text-sm"
+                    class="hidden text-center py-12 text-neutral-400 font-mono text-sm"
                 >
                     <i class="ph ph-ghost text-4xl mb-2"></i>
                     <p>No notes found matching your criteria.</p>
@@ -121,30 +122,8 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
                 </div>
 
                 <!-- Daily Notes Content -->
-                <div id="daily" class="tab-content space-y-2 hidden">
-                    {sortedDailyPosts.length > 0 ? (
-                        sortedDailyPosts.map((post) => (
-                            <a
-                                href={`/blog/${post.id}`}
-                                class="post-item group flex flex-col py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
-                                data-title={post.data.title}
-                                data-tags={post.data.tags ? post.data.tags.join(', ') : ''}
-                            >
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between">
-                                    <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4 truncate pr-4">
-                                        {post.data.title}
-                                    </span>
-                                    <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0 shrink-0">
-                                        {formatDate(post.data.date)}
-                                    </span>
-                                </div>
-                            </a>
-                        ))
-                    ) : (
-                        <div class="text-center py-12 text-neutral-400 font-mono text-xs">
-                            <p>No daily notes published yet.</p>
-                        </div>
-                    )}
+                <div id="daily" class="tab-content space-y-4 hidden">
+                    <DailyFeed archivePosts={sortedDailyPosts} />
                 </div>
 
                 <!-- Dev Diary Content -->
@@ -200,7 +179,10 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
             const activeTabContent =
                 document.querySelector(".tab-content.block");
 
-            if (!activeTabContent) return;
+            if (!activeTabContent || activeTabContent.id === "daily") {
+                if (emptyState) emptyState.classList.add("hidden");
+                return;
+            }
 
             const posts = activeTabContent.querySelectorAll(".post-item") as NodeListOf<HTMLElement>;
             let visibleCount = 0;
@@ -227,49 +209,63 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
 
             // 控制空状态提示的显示
             if (emptyState) {
-                if (visibleCount === 0) {
-                    emptyState.style.display = "block";
+                if (searchTerm && visibleCount === 0) {
+                    emptyState.classList.remove("hidden");
                 } else {
-                    emptyState.style.display = "none";
+                    emptyState.classList.add("hidden");
                 }
             }
+        }
+
+        // Tab 切换函数
+        function switchTab(targetId: string) {
+            const targetBtn = document.querySelector(`.tab-btn[data-target="${targetId}"]`) as HTMLElement | null;
+            const targetContent = document.getElementById(targetId);
+            if (!targetBtn || !targetContent) return;
+
+            tabBtns.forEach((b) => {
+                b.classList.remove("border-neutral-900", "text-neutral-900");
+                b.classList.add("border-transparent", "text-neutral-400");
+            });
+            tabContents.forEach((c) => {
+                c.classList.remove("block");
+                c.classList.add("hidden");
+            });
+
+            targetBtn.classList.remove("border-transparent", "text-neutral-400");
+            targetBtn.classList.add("border-neutral-900", "text-neutral-900");
+
+            targetContent.classList.remove("hidden");
+            targetContent.classList.add("block");
+
+            // 记录当前激活的 Tab，便于后续持久化
+            sessionStorage.setItem("active_blog_tab", targetId);
+
+            filterPosts();
         }
 
         // Tab switching logic
         tabBtns.forEach((btn) => {
             btn.addEventListener("click", () => {
-                tabBtns.forEach((b) => {
-                    b.classList.remove(
-                        "border-neutral-900",
-                        "text-neutral-900",
-                    );
-                    b.classList.add(
-                        "border-transparent",
-                        "text-neutral-400",
-                    );
-                });
-                tabContents.forEach((c) => {
-                    c.classList.remove("block");
-                    c.classList.add("hidden");
-                });
-
-                btn.classList.remove(
-                    "border-transparent",
-                    "text-neutral-400",
-                );
-                btn.classList.add("border-neutral-900", "text-neutral-900");
-
                 const targetId = btn.getAttribute("data-target");
-                const targetContent = document.getElementById(targetId!);
-                if (targetContent) {
-                    targetContent.classList.remove("hidden");
-                    targetContent.classList.add("block");
-                }
-
-                // 切换 Tab 时重新执行一次过滤，以应用当前的搜索条件
-                filterPosts();
+                if (targetId) switchTab(targetId);
             });
         });
+
+        // 页面初始化时检查 URL 参数 (?tab=daily) 或 sessionStorage 恢复对应 Tab
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryTab = urlParams.get("tab");
+        const savedTab = sessionStorage.getItem("active_blog_tab");
+        const activeTab = queryTab || savedTab;
+
+        if (activeTab && ["tech", "daily", "diary"].includes(activeTab)) {
+            switchTab(activeTab);
+            // 清除 URL 中的 ?tab= 参数保持地址栏干净
+            if (queryTab) {
+                const cleanUrl = window.location.pathname + window.location.hash;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+        }
 
         // Search toggle logic
         if (searchToggle && searchContainer && searchInput) {
