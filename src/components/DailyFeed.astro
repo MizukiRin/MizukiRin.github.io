@@ -12,14 +12,14 @@ const { archivePosts = [] } = Astro.props;
 
 <div id="daily-feed-container" class="space-y-6">
   <!-- 顶部状态栏与操作栏 -->
-  <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
+  <div class="flex flex-wrap items-center justify-between gap-y-2 border-b border-neutral-100 pb-3">
     <div class="flex items-center space-x-2">
       <span class="text-xs font-mono uppercase tracking-wider text-neutral-400">Timeline / Memos</span>
       <span id="daily-count-badge" class="hidden text-[11px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">0</span>
     </div>
 
     <!-- 用户身份与登录状态 -->
-    <div id="daily-auth-section" class="flex items-center space-x-3 text-xs font-mono">
+    <div id="daily-auth-section" class="flex items-center space-x-2.5 text-xs font-mono">
       <!-- 未登录状态：简约的 GitHub 登录按钮 -->
       <button
         id="github-login-btn"
@@ -31,23 +31,25 @@ const { archivePosts = [] } = Astro.props;
       </button>
 
       <!-- 已登录状态 (默认隐藏，登录后显示作者信息与发帖/退出按钮) -->
-      <div id="daily-user-panel" class="hidden items-center space-x-3">
+      <div id="daily-user-panel" class="hidden items-center space-x-2 sm:space-x-3">
         <div class="flex items-center space-x-1.5">
           <img id="user-avatar" src="" alt="avatar" class="w-5 h-5 rounded-full border border-neutral-200" />
-          <span id="user-name" class="text-neutral-800 font-medium"></span>
+          <span id="user-name" class="text-neutral-800 font-medium max-w-[80px] sm:max-w-none truncate"></span>
         </div>
 
+        <!-- 发动态按钮：移动端纯方形小胶囊图标且完美水平垂直居中，桌面端带完整文字 -->
         <button
           id="toggle-compose-btn"
-          class="hidden items-center space-x-1 bg-neutral-900 hover:bg-neutral-800 text-white px-2.5 py-1 rounded transition-colors shadow-xs cursor-pointer"
+          class="hidden w-7 h-7 sm:w-auto sm:h-auto flex items-center justify-center sm:space-x-1 bg-neutral-900 hover:bg-neutral-800 text-white rounded sm:px-2.5 sm:py-1 transition-colors shadow-xs cursor-pointer whitespace-nowrap select-none"
+          title="发动态"
         >
-          <i class="ph ph-plus"></i>
-          <span>发动态</span>
+          <i class="ph ph-note-pencil text-sm flex items-center justify-center"></i>
+          <span class="hidden sm:inline">发动态</span>
         </button>
 
         <button
           id="logout-btn"
-          class="text-neutral-400 hover:text-red-600 transition-colors cursor-pointer"
+          class="w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-red-600 rounded hover:bg-neutral-100 transition-colors cursor-pointer"
           title="退出登录"
         >
           <i class="ph ph-sign-out text-sm"></i>
@@ -57,10 +59,10 @@ const { archivePosts = [] } = Astro.props;
   </div>
 
   <!-- 发帖卡片 (默认隐藏，仅博主登录后可展开) -->
-  <div id="daily-composer" class="hidden bg-white border border-neutral-200 rounded-sm p-4 space-y-3 shadow-xs animate-fade-in">
-    <div class="flex items-center justify-between text-xs text-neutral-400 font-mono">
-      <span>发布新随想</span>
-      <span class="text-[11px]">支持 Markdown · 支持截图 Ctrl+V 直接粘贴</span>
+  <div id="daily-composer" class="hidden bg-white border border-neutral-200 rounded-sm p-3.5 sm:p-4 space-y-3 shadow-xs animate-fade-in">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-neutral-400 font-mono gap-1">
+      <span class="font-medium text-neutral-600">发布新随想</span>
+      <span class="text-[11px] text-neutral-400">支持 Markdown · 支持截图 Ctrl+V 粘贴</span>
     </div>
 
     <!-- 文本输入框 -->
@@ -76,16 +78,17 @@ const { archivePosts = [] } = Astro.props;
       <!-- 预览项由 JS 动态生成 -->
     </div>
 
-    <!-- 工具栏与操作按钮 -->
-    <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-neutral-100">
-      <div class="flex items-center space-x-2">
+    <!-- 工具栏与操作按钮 (针对手机小屏结构分层排版，彻底解决错行挤压) -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-neutral-100">
+      <!-- 工具输入区 -->
+      <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
         <!-- 上传图片按钮 -->
         <label
           for="image-file-input"
-          class="inline-flex items-center space-x-1 text-xs text-neutral-500 hover:text-neutral-900 cursor-pointer px-2 py-1 border border-dashed border-neutral-200 hover:border-neutral-400 rounded transition-colors"
+          class="inline-flex items-center space-x-1 text-xs text-neutral-600 hover:text-neutral-900 cursor-pointer px-2 py-1 border border-dashed border-neutral-200 hover:border-neutral-400 rounded transition-colors whitespace-nowrap"
         >
           <i class="ph ph-image text-sm"></i>
-          <span>添加图片</span>
+          <span>图片</span>
         </label>
         <input
           type="file"
@@ -96,41 +99,49 @@ const { archivePosts = [] } = Astro.props;
         />
 
         <!-- 标签输入框 -->
-        <div class="flex items-center space-x-1 text-xs font-mono text-neutral-400">
-          <i class="ph ph-tag"></i>
+        <div class="flex items-center space-x-1 border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-500">
+          <i class="ph ph-tag text-xs"></i>
           <input
             type="text"
             id="daily-tags-input"
             placeholder="标签 (空格分隔)"
-            class="bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-neutral-400 focus:outline-none py-0.5 px-1 text-xs text-neutral-600 placeholder:text-neutral-300 w-32 transition-colors"
+            class="bg-transparent focus:outline-none text-xs text-neutral-700 placeholder:text-neutral-300 w-24 sm:w-28"
           />
         </div>
+
         <!-- 仅我可见勾选 -->
-        <label class="flex items-center space-x-1 text-xs font-mono text-neutral-400 hover:text-neutral-600 cursor-pointer select-none transition-colors" title="勾选后仅博主登录后可见，访客不可见">
+        <label class="flex items-center space-x-1 text-xs font-mono text-neutral-500 hover:text-neutral-800 cursor-pointer select-none transition-colors ml-1" title="勾选后仅博主登录后可见，访客不可见">
           <input
             type="checkbox"
             id="daily-private-input"
             class="rounded border-neutral-300 text-neutral-900 focus:ring-0 w-3.5 h-3.5 cursor-pointer accent-neutral-900"
           />
-          <span class="flex items-center space-x-0.5">
-            <i class="ph ph-lock text-xs"></i>
+          <span class="flex items-center space-x-1">
+            <svg class="w-3.5 h-3.5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 10s3.5 6 10 6 10-6 10-6"/>
+              <path d="M5 13.5L3 17"/>
+              <path d="M9 16L8 20"/>
+              <path d="M15 16L16 20"/>
+              <path d="M19 13.5L21 17"/>
+            </svg>
             <span>仅我可见</span>
           </span>
         </label>
       </div>
 
-      <div class="flex items-center space-x-2">
+      <!-- 提交与取消按钮 -->
+      <div class="flex items-center justify-end space-x-2 shrink-0">
         <button
           id="cancel-compose-btn"
           type="button"
-          class="text-xs text-neutral-400 hover:text-neutral-600 px-2.5 py-1 cursor-pointer"
+          class="text-xs font-mono text-neutral-400 hover:text-neutral-600 px-2.5 py-1 cursor-pointer"
         >
           取消
         </button>
         <button
           id="submit-post-btn"
           type="button"
-          class="inline-flex items-center space-x-1.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs px-3.5 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs cursor-pointer"
+          class="inline-flex items-center space-x-1.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-mono px-3.5 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs cursor-pointer"
         >
           <i id="submit-spinner" class="ph ph-spinner animate-spin hidden"></i>
           <i id="submit-icon" class="ph ph-paper-plane-tilt"></i>
@@ -391,15 +402,15 @@ const { archivePosts = [] } = Astro.props;
     const dayNum = String(postDate.getDate()).padStart(2, "0");
     const cardTimeInfo = formatCardTime(post.created_at);
 
-    // 1. 左侧：纯文字日期（第一行 2026.10，第二行纯数字日如 20，无方框，无“日”字）
+    // 1. 左侧：纯文字日期（手机端紧凑自适应 w-14/w-16，桌面端 w-28，防止挤占右侧空间）
     const leftCol = document.createElement("div");
-    leftCol.className = "date-col w-20 sm:w-28 shrink-0 text-right pr-3 sm:pr-5 pt-3 select-none font-mono";
+    leftCol.className = "date-col w-14 sm:w-24 md:w-28 shrink-0 text-right pr-2 sm:pr-5 pt-3 select-none font-mono";
     leftCol.innerHTML = `
-      <div class="text-[11px] font-mono tracking-wider text-neutral-400 group-hover:text-neutral-600 group-[.is-active]:text-neutral-900 group-[.is-active]:font-semibold transition-colors leading-none">
+      <div class="text-[10px] sm:text-[11px] font-mono tracking-tight sm:tracking-wider text-neutral-400 group-hover:text-neutral-600 group-[.is-active]:text-neutral-900 group-[.is-active]:font-semibold transition-colors leading-none">
         ${yearMonthStr}
       </div>
       <div class="flex items-baseline justify-end mt-1.5 leading-none origin-right group-hover:scale-105 group-[.is-active]:scale-110 transition-transform duration-200">
-        <span class="text-2xl sm:text-3xl font-mono font-bold text-neutral-750 group-hover:text-neutral-950 group-[.is-active]:text-neutral-950 group-[.is-active]:font-extrabold transition-colors tracking-tight">
+        <span class="text-xl sm:text-3xl font-mono font-bold text-neutral-750 group-hover:text-neutral-950 group-[.is-active]:text-neutral-950 group-[.is-active]:font-extrabold transition-colors tracking-tight">
           ${dayNum}
         </span>
       </div>
@@ -419,10 +430,10 @@ const { archivePosts = [] } = Astro.props;
 
     // 3. 右侧：动态卡片主体
     const rightCol = document.createElement("div");
-    rightCol.className = "flex-1 min-w-0 pl-3 sm:pl-6 pb-8";
+    rightCol.className = "flex-1 min-w-0 pl-2.5 sm:pl-6 pb-8";
 
     const card = document.createElement("div");
-    card.className = "bg-white border border-neutral-200/90 rounded-sm p-4 sm:p-5 space-y-3 transition-all hover:border-neutral-400 hover:shadow-xs group-[.is-active]:border-neutral-900 group-[.is-active]:shadow-sm cursor-pointer";
+    card.className = "bg-white border border-neutral-200/90 rounded-sm p-3.5 sm:p-5 space-y-3 transition-all hover:border-neutral-400 hover:shadow-xs group-[.is-active]:border-neutral-900 group-[.is-active]:shadow-sm cursor-pointer";
 
     // 点选卡片激活高亮逻辑
     card.addEventListener("click", (e) => {
@@ -437,46 +448,63 @@ const { archivePosts = [] } = Astro.props;
       }
     });
 
-    // 卡片顶部：左侧作者信息，右侧详细时间与相对时间、删除按钮
+    // 卡片顶部：桌面端（sm:）左右单行对齐；窄屏手机端作者单占一行，时间与操作按钮（眼睛、垃圾桶）自然排在作者下方一行，视觉极其清爽不挤压
     const header = document.createElement("div");
-    header.className = "flex items-center justify-between pb-2 border-b border-neutral-100";
+    header.className = "flex flex-col sm:flex-row sm:items-center justify-between gap-y-1.5 pb-2 border-b border-neutral-100";
 
     const leftInfo = document.createElement("div");
-    leftInfo.className = "flex items-center space-x-2";
+    leftInfo.className = "flex items-center space-x-1.5";
     leftInfo.innerHTML = `
-      <img src="https://avatars.githubusercontent.com/${post.author_github}" alt="${post.author_github}" class="w-5 h-5 rounded-full border border-neutral-200 object-cover" />
+      <img src="https://avatars.githubusercontent.com/${post.author_github}" alt="${post.author_github}" class="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full border border-neutral-200 object-cover" />
       <span class="text-xs font-medium text-neutral-800">${post.author_github}</span>
       ${post.author_github.toLowerCase() === AUTHOR_GITHUB.toLowerCase() ? '<span class="text-[9px] font-mono bg-neutral-900 text-white px-1 py-0.2 rounded-xs">Author</span>' : ''}
     `;
 
     const rightInfo = document.createElement("div");
-    rightInfo.className = "flex items-center space-x-2 text-xs font-mono text-neutral-400";
+    rightInfo.className = "flex items-center space-x-2 text-xs font-mono text-neutral-400 sm:ml-auto";
     
     // 如果是非博主访客查看（理论上已被过滤，作为保底展示）
     if (!isAuthor && post.is_private) {
       rightInfo.innerHTML += `
-        <span class="inline-flex items-center space-x-0.5 text-[10px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded-sm border border-neutral-200" title="该动态仅博主本人可见">
-          <i class="ph ph-lock text-xs"></i>
-          <span>仅我可见</span>
+        <span class="inline-flex items-center text-neutral-400" title="该动态仅博主本人可见">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 10s3.5 6 10 6 10-6 10-6"/>
+            <path d="M5 13.5L3 17"/>
+            <path d="M9 16L8 20"/>
+            <path d="M15 16L16 20"/>
+            <path d="M19 13.5L21 17"/>
+          </svg>
         </span>
       `;
     }
 
     rightInfo.innerHTML += `
-      <time title="${postDate.toLocaleString()}" class="transition-colors hover:text-neutral-600">${cardTimeInfo.display}</time>
+      <time title="${postDate.toLocaleString()}" class="transition-colors hover:text-neutral-600 whitespace-nowrap">${cardTimeInfo.display}</time>
     `;
 
     if (isAuthor) {
       const isPriv = Boolean(post.is_private);
-      // 切换公开/私密状态按钮 (小锁开关：仅我可见时小锁关闭锁定，公开时小锁打开)
+      // 切换公开/私密状态按钮：纯图标（睁眼=公开，真正闭眼带睫毛=仅我可见）
       const privacyBtn = document.createElement("button");
       privacyBtn.className = isPriv
-        ? "inline-flex items-center space-x-1 text-[11px] font-mono text-neutral-800 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 px-1.5 py-0.5 rounded-sm transition-colors cursor-pointer ml-1 select-none"
-        : "inline-flex items-center space-x-1 text-[11px] font-mono text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 border border-transparent hover:border-neutral-200 px-1.5 py-0.5 rounded-sm transition-colors cursor-pointer ml-1 select-none";
-      privacyBtn.title = isPriv ? "当前状态：仅我可见 (点击切换为公开)" : "当前状态：公开 (点击切换为仅我可见)";
+        ? "text-neutral-700 hover:text-neutral-900 p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer select-none flex items-center justify-center"
+        : "text-neutral-350 hover:text-neutral-700 p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer select-none flex items-center justify-center";
+      privacyBtn.title = isPriv ? "当前状态：仅我可见（点击公开）" : "当前状态：公开（点击设为仅我可见）";
+      
+      // 闭眼 SVG（弧形闭合眼线+睫毛）vs 睁眼图标（经典大眼睛）
+      const closedEyeSvg = `
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 10s3.5 6 10 6 10-6 10-6"/>
+          <path d="M5 13.5L3 17"/>
+          <path d="M9 16L8 20"/>
+          <path d="M15 16L16 20"/>
+          <path d="M19 13.5L21 17"/>
+        </svg>
+      `;
+
       privacyBtn.innerHTML = isPriv
-        ? '<i class="ph ph-lock-key text-xs text-neutral-800"></i><span>仅我</span>'
-        : '<i class="ph ph-lock-key-open text-xs text-neutral-400 hover:text-neutral-700"></i><span class="text-neutral-400">公开</span>';
+        ? closedEyeSvg
+        : '<i class="ph ph-eye text-sm"></i>';
       privacyBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await handleTogglePrivacy(post.id, !isPriv, privacyBtn);
@@ -485,7 +513,7 @@ const { archivePosts = [] } = Astro.props;
 
       // 删除按钮 (黑白素雅线条风格)
       const deleteBtn = document.createElement("button");
-      deleteBtn.className = "text-neutral-300 hover:text-neutral-900 transition-colors p-1 ml-0.5 rounded-sm hover:bg-neutral-100 cursor-pointer";
+      deleteBtn.className = "text-neutral-350 hover:text-neutral-900 transition-colors p-1 rounded hover:bg-neutral-100 cursor-pointer";
       deleteBtn.title = "彻底删除动态及关联图片";
       deleteBtn.innerHTML = '<i class="ph ph-trash text-sm"></i>';
       deleteBtn.addEventListener("click", (e) => {
@@ -822,7 +850,7 @@ const { archivePosts = [] } = Astro.props;
     try {
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="ph ph-spinner animate-spin text-xs"></i><span>处理中</span>';
+        btn.innerHTML = '<i class="ph ph-spinner animate-spin text-sm"></i>';
       }
 
       const { data, error } = await supabase
