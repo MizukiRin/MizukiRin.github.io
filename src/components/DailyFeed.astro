@@ -180,6 +180,23 @@ const { archivePosts = [] } = Astro.props;
     <!-- 时间轴由 JS 渲染 -->
   </div>
 
+  <!-- 分页加载区域与状态指示器 -->
+  <div id="daily-pagination-container" class="hidden text-center py-6 select-none font-mono">
+    <button
+      id="daily-load-more-btn"
+      type="button"
+      class="inline-flex items-center space-x-1.5 text-xs text-neutral-500 hover:text-neutral-900 bg-white hover:bg-neutral-50 border border-neutral-200 hover:border-neutral-300 px-4 py-1.5 rounded transition-colors shadow-2xs cursor-pointer select-none"
+    >
+      <i id="daily-load-more-spinner" class="ph ph-spinner animate-spin hidden"></i>
+      <i id="daily-load-more-icon" class="ph ph-arrow-down"></i>
+      <span id="daily-load-more-text">加载更早动态</span>
+    </button>
+    <!-- 全部加载完毕提示 (与加载按钮互斥展示) -->
+    <div id="daily-all-loaded-notice" class="hidden text-xs text-neutral-400 py-1">
+      — 已加载全部动态 —
+    </div>
+  </div>
+
   <!-- 空状态提示 -->
   <div id="daily-empty-state" class="hidden text-center py-12 text-neutral-400 font-mono text-xs">
     <i class="ph ph-clock-counter-clockwise text-3xl mb-2 text-neutral-300"></i>
@@ -214,16 +231,36 @@ const { archivePosts = [] } = Astro.props;
   )}
 </div>
 
-<!-- 图片大图查看灯箱 (Lightbox Modal) -->
-<div id="lightbox-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4">
-  <button id="lightbox-close" class="absolute top-4 right-4 text-white/70 hover:text-white p-2 text-2xl transition-colors cursor-pointer">
+<!-- 图片大图查看灯箱 (Lightbox Modal，支持多图左右切换与计数) -->
+<div id="lightbox-modal" class="hidden fixed inset-0 z-[999] bg-black/90 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+  <!-- 关闭按钮 -->
+  <button id="lightbox-close" class="absolute top-4 right-4 text-white/70 hover:text-white p-2 text-2xl transition-colors cursor-pointer z-20" title="关闭 (Esc)">
     <i class="ph ph-x"></i>
   </button>
-  <img id="lightbox-img" src="" alt="Zoomed view" class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl transition-transform" />
+
+  <!-- 图片计数器指示 (多图时展示，例如 "2 / 5") -->
+  <div id="lightbox-counter" class="hidden absolute top-5 left-1/2 -translate-x-1/2 text-xs font-mono text-white/80 bg-neutral-900/80 px-3 py-1 rounded-full backdrop-blur-xs border border-white/10 z-20">
+    <span id="lightbox-current-idx">1</span> / <span id="lightbox-total-idx">1</span>
+  </div>
+
+  <!-- 上一张按钮 (多图时展示) -->
+  <button id="lightbox-prev" class="hidden absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 text-white/75 hover:text-white hover:bg-white/10 p-2 sm:p-3 rounded-full text-2xl sm:text-3xl transition-all cursor-pointer z-20" title="上一张 (←)">
+    <i class="ph ph-caret-left"></i>
+  </button>
+
+  <!-- 下一张按钮 (多图时展示) -->
+  <button id="lightbox-next" class="hidden absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 text-white/75 hover:text-white hover:bg-white/10 p-2 sm:p-3 rounded-full text-2xl sm:text-3xl transition-all cursor-pointer z-20" title="下一张 (→)">
+    <i class="ph ph-caret-right"></i>
+  </button>
+
+  <!-- 放大图片展示主体 -->
+  <div id="lightbox-stage" class="relative flex items-center justify-center w-full h-full max-w-5xl max-h-[88vh]">
+    <img id="lightbox-img" src="" alt="Zoomed view" class="max-w-full max-h-[85vh] object-contain rounded shadow-2xl transition-transform duration-200" />
+  </div>
 </div>
 
 <!-- 自定义确认模态框 (与博客极简设计风格保持一致：小圆角、柔和边框、黑白线条图标) -->
-<div id="daily-confirm-modal" class="hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4 transition-all">
+<div id="daily-confirm-modal" class="hidden fixed inset-0 z-[999] bg-black/45 backdrop-blur-xs flex items-center justify-center p-4 transition-all">
   <div class="bg-neutral-50/95 border border-neutral-300/80 rounded-sm shadow-xl max-w-sm w-full p-5 sm:p-6 space-y-4 animate-scale-in">
     <div class="flex items-start space-x-3.5">
       <div id="modal-icon-container" class="w-8 h-8 flex items-center justify-center shrink-0 text-neutral-800">
@@ -293,6 +330,14 @@ const { archivePosts = [] } = Astro.props;
   const lightboxModal = document.getElementById("lightbox-modal");
   const lightboxImg = document.getElementById("lightbox-img") as HTMLImageElement | null;
   const lightboxClose = document.getElementById("lightbox-close");
+  const lightboxPrev = document.getElementById("lightbox-prev");
+  const lightboxNext = document.getElementById("lightbox-next");
+  const lightboxCounter = document.getElementById("lightbox-counter");
+  const lightboxCurrentIdx = document.getElementById("lightbox-current-idx");
+  const lightboxTotalIdx = document.getElementById("lightbox-total-idx");
+
+  let galleryImages: string[] = [];
+  let currentGalleryIndex = 0;
 
   // 自定义优雅模态框引用
   const confirmModal = document.getElementById("daily-confirm-modal");
@@ -306,6 +351,34 @@ const { archivePosts = [] } = Astro.props;
   const modalIcon = document.getElementById("modal-icon");
 
   let confirmModalResolve: ((val: boolean) => void) | null = null;
+
+  // 保证模态框挂载到 document.body，规避父级容器 CSS 动画/transform (如 animate-fade-in) 导致的 fixed 视口定位失效问题
+  if (typeof document !== "undefined") {
+    if (lightboxModal && lightboxModal.parentElement !== document.body) {
+      document.body.appendChild(lightboxModal);
+    }
+    if (confirmModal && confirmModal.parentElement !== document.body) {
+      document.body.appendChild(confirmModal);
+    }
+  }
+
+  // 分页相关 DOM 元素与状态
+  const paginationContainer = document.getElementById("daily-pagination-container");
+  const loadMoreBtn = document.getElementById("daily-load-more-btn") as HTMLButtonElement | null;
+  const loadMoreSpinner = document.getElementById("daily-load-more-spinner");
+  const loadMoreIcon = document.getElementById("daily-load-more-icon");
+  const loadMoreText = document.getElementById("daily-load-more-text");
+  const allLoadedNotice = document.getElementById("daily-all-loaded-notice");
+
+  const PAGE_SIZE = 15;
+  let currentPage = 0;
+  let hasMore = false;
+  let isLoadingMore = false;
+  let totalCount = 0;
+
+  let selectedFiles: File[] = [];
+  let currentUser: any = null;
+  let isAuthor = false;
 
   function showConfirmModal(options: {
     title: string;
@@ -330,16 +403,22 @@ const { archivePosts = [] } = Astro.props;
       }
 
       confirmModal?.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
     });
   }
 
   function hideConfirmModal(result: boolean) {
     confirmModal?.classList.add("hidden");
+    document.body.style.overflow = "";
     if (confirmModalResolve) {
       confirmModalResolve(result);
       confirmModalResolve = null;
     }
   }
+
+  // 阻断删除弹窗出现时的滚轮与触摸滑动穿透到底层时间轴
+  confirmModal?.addEventListener("wheel", (e) => e.preventDefault(), { passive: false });
+  confirmModal?.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
 
   modalCancelBtn?.addEventListener("click", () => hideConfirmModal(false));
   modalConfirmBtn?.addEventListener("click", () => hideConfirmModal(true));
@@ -351,10 +430,6 @@ const { archivePosts = [] } = Astro.props;
       hideConfirmModal(false);
     }
   });
-
-  let selectedFiles: File[] = [];
-  let currentUser: any = null;
-  let isAuthor = false;
 
   // 格式化时间戳：年月日 时分
   function formatFullDate(dateString: string): string {
@@ -575,10 +650,9 @@ const { archivePosts = [] } = Astro.props;
           .join("");
       }
 
-      imgContainer.querySelectorAll("img").forEach(img => {
+      imgContainer.querySelectorAll("img").forEach((img, idx) => {
         img.addEventListener("click", () => {
-          const src = img.getAttribute("data-src") || img.src;
-          openLightbox(src);
+          openLightbox(post.images || [img.getAttribute("data-src") || img.src], idx);
         });
       });
 
@@ -591,27 +665,122 @@ const { archivePosts = [] } = Astro.props;
     return article;
   }
 
-  // 大图预览交互
-  function openLightbox(src: string) {
-    if (!lightboxModal || !lightboxImg) return;
-    lightboxImg.src = src;
+  // 大图预览交互 (支持单条动态多图画廊左右切换、键盘箭头与手机滑动手势)
+  function openLightbox(images: string[], startIndex = 0) {
+    if (!lightboxModal || !lightboxImg || images.length === 0) return;
+
+    galleryImages = images;
+    currentGalleryIndex = Math.max(0, Math.min(startIndex, images.length - 1));
+
+    updateLightboxImage();
+
     lightboxModal.classList.remove("hidden");
     document.body.style.overflow = "hidden";
+  }
+
+  function updateLightboxImage() {
+    if (!lightboxImg || galleryImages.length === 0) return;
+
+    lightboxImg.src = galleryImages[currentGalleryIndex];
+
+    const hasMultiple = galleryImages.length > 1;
+
+    if (hasMultiple) {
+      lightboxCounter?.classList.remove("hidden");
+      lightboxPrev?.classList.remove("hidden");
+      lightboxNext?.classList.remove("hidden");
+      if (lightboxCurrentIdx) lightboxCurrentIdx.textContent = String(currentGalleryIndex + 1);
+      if (lightboxTotalIdx) lightboxTotalIdx.textContent = String(galleryImages.length);
+    } else {
+      lightboxCounter?.classList.add("hidden");
+      lightboxPrev?.classList.add("hidden");
+      lightboxNext?.classList.add("hidden");
+    }
+  }
+
+  function showPrevImage() {
+    if (galleryImages.length <= 1) return;
+    currentGalleryIndex = (currentGalleryIndex - 1 + galleryImages.length) % galleryImages.length;
+    updateLightboxImage();
+  }
+
+  function showNextImage() {
+    if (galleryImages.length <= 1) return;
+    currentGalleryIndex = (currentGalleryIndex + 1) % galleryImages.length;
+    updateLightboxImage();
   }
 
   function closeLightbox() {
     if (!lightboxModal) return;
     lightboxModal.classList.add("hidden");
     document.body.style.overflow = "";
+    galleryImages = [];
+    currentGalleryIndex = 0;
   }
 
   lightboxClose?.addEventListener("click", closeLightbox);
+  lightboxPrev?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showPrevImage();
+  });
+  lightboxNext?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showNextImage();
+  });
+
   lightboxModal?.addEventListener("click", (e) => {
-    if (e.target === lightboxModal) closeLightbox();
+    // 点击背景空白区域关闭（点击图片或按钮不关闭）
+    if (e.target === lightboxModal || (e.target as HTMLElement).id === "lightbox-stage") {
+      closeLightbox();
+    }
   });
+
+  lightboxModal?.addEventListener("wheel", (e) => e.preventDefault(), { passive: false });
+  lightboxModal?.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+
+  // 键盘 Esc 关闭、左右箭头切换图片
   window.addEventListener("keydown", (e) => {
+    if (!lightboxModal || lightboxModal.classList.contains("hidden")) return;
     if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowLeft") showPrevImage();
+    if (e.key === "ArrowRight") showNextImage();
   });
+
+  // 移动端手指左右轻扫手势切图
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  lightboxModal?.addEventListener(
+    "touchstart",
+    (e: TouchEvent) => {
+      touchStartX = e.changedTouches[0].clientX;
+      touchStartY = e.changedTouches[0].clientY;
+    },
+    { passive: true }
+  );
+
+  lightboxModal?.addEventListener(
+    "touchend",
+    (e: TouchEvent) => {
+      if (galleryImages.length <= 1) return;
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffX = touchEndX - touchStartX;
+      const diffY = touchEndY - touchStartY;
+
+      // 水平滑动距离大于 40px 且明显大于垂直移动时触发切图
+      if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > 0) {
+          // 向右滑 -> 查看上一张
+          showPrevImage();
+        } else {
+          // 向左滑 -> 查看下一张
+          showNextImage();
+        }
+      }
+    },
+    { passive: true }
+  );
 
   // 更新待上传图片预览
   function updateImagePreviews() {
@@ -675,24 +844,101 @@ const { archivePosts = [] } = Astro.props;
     }
   });
 
+  // 将动态追加渲染到时间轴流中（智能识别是否跨天，同天自动合流）
+  function appendPostsToStream(posts: PostItem[]) {
+    if (!streamContainer) return;
+
+    posts.forEach((post) => {
+      const postDate = new Date(post.created_at);
+      const dateKey = `${postDate.getFullYear()}-${postDate.getMonth() + 1}-${postDate.getDate()}`;
+
+      let lastGroup = streamContainer.lastElementChild as HTMLElement | null;
+      if (
+        lastGroup &&
+        lastGroup.classList.contains("timeline-day-group") &&
+        lastGroup.getAttribute("data-date-key") === dateKey
+      ) {
+        lastGroup.appendChild(renderTimelineNode(post, false));
+      } else {
+        const newGroup = document.createElement("div");
+        newGroup.className = "timeline-day-group";
+        newGroup.setAttribute("data-date-key", dateKey);
+        newGroup.appendChild(renderTimelineNode(post, true));
+        streamContainer.appendChild(newGroup);
+      }
+    });
+  }
+
+  // 更新分页底栏 UI 状态 (按钮与提示严格互斥，避免并存或闪烁)
+  function updatePaginationUI() {
+    if (!paginationContainer) return;
+
+    // 如果还没有任何动态发布，完全隐藏分页区
+    if (totalCount === 0) {
+      paginationContainer.classList.add("hidden");
+      return;
+    }
+
+    paginationContainer.classList.remove("hidden");
+
+    if (hasMore) {
+      // 还有未加载的动态：显示加载按钮，隐藏“已加载全部”提示
+      if (allLoadedNotice) {
+        allLoadedNotice.style.display = "none";
+        allLoadedNotice.classList.add("hidden");
+      }
+      if (loadMoreBtn) {
+        loadMoreBtn.style.display = "inline-flex";
+        loadMoreBtn.classList.remove("hidden");
+        loadMoreBtn.disabled = false;
+      }
+      if (loadMoreSpinner) loadMoreSpinner.classList.add("hidden");
+      if (loadMoreIcon) loadMoreIcon.classList.remove("hidden");
+      if (loadMoreText) loadMoreText.textContent = "加载更早动态";
+    } else {
+      // 已加载完毕：彻底隐藏加载按钮，显示“已加载全部动态”
+      if (loadMoreBtn) {
+        loadMoreBtn.style.display = "none";
+        loadMoreBtn.classList.add("hidden");
+      }
+      if (allLoadedNotice) {
+        allLoadedNotice.style.display = "block";
+        allLoadedNotice.classList.remove("hidden");
+      }
+    }
+  }
+
   // 请求序号，防止并发竞争导致重复渲染
   let currentLoadSeq = 0;
 
-  // 加载时间轴动态 (访客只加载公开动态，博主登录后加载全部包含私密动态)
-  async function loadPosts() {
+  // 加载时间轴动态 (支持分页，访客只加载公开动态，博主登录后加载全部包含私密动态)
+  async function loadPosts(page = 0, isAppend = false) {
     const seq = ++currentLoadSeq;
     try {
-      if (skeleton) skeleton.style.display = "block";
+      if (!isAppend) {
+        currentPage = 0;
+        if (skeleton) skeleton.style.display = "block";
+        if (paginationContainer) paginationContainer.classList.add("hidden");
+      }
 
-      const { data, error } = await supabase
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      let query = supabase
         .from("daily_posts")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false });
+
+      if (!isAuthor) {
+        query = query.eq("is_private", false);
+      }
+
+      const { data, count, error } = await query.range(from, to);
 
       // 如果有更新的请求发起，丢弃此过期请求的结果
       if (seq !== currentLoadSeq) return;
 
-      if (skeleton) skeleton.style.display = "none";
+      if (!isAppend && skeleton) skeleton.style.display = "none";
 
       if (error) {
         console.error("加载动态失败:", error);
@@ -700,57 +946,127 @@ const { archivePosts = [] } = Astro.props;
       }
 
       if (!streamContainer) return;
-      // 关键防重：在插入新节点前统一清空容器
-      streamContainer.innerHTML = "";
 
-      // 过滤数据：访客只看公开动态，博主本人查看全部（公开 + 私密）
-      const visiblePosts = (data || []).filter((post: PostItem) => {
-        if (isAuthor) return true;
-        return !post.is_private;
-      });
+      if (!isAppend) {
+        streamContainer.innerHTML = "";
+      }
 
-      if (visiblePosts.length === 0) {
+      totalCount = count || 0;
+      if (countBadge) {
+        countBadge.textContent = String(totalCount);
+        if (totalCount > 0) countBadge.classList.remove("hidden");
+        else countBadge.classList.add("hidden");
+      }
+
+      const posts: PostItem[] = data || [];
+
+      if (!isAppend && posts.length === 0) {
         if (emptyState) emptyState.classList.remove("hidden");
-        if (countBadge) countBadge.classList.add("hidden");
+        if (paginationContainer) paginationContainer.classList.add("hidden");
         return;
       }
 
       if (emptyState) emptyState.classList.add("hidden");
-      if (countBadge) {
-        countBadge.textContent = String(visiblePosts.length);
-        countBadge.classList.remove("hidden");
-      }
 
-      // 按日期（年-月-日）进行分组容器封装，便于 CSS 管理同日内焦点联动
-      const dayGroups = new Map<string, PostItem[]>();
-      visiblePosts.forEach((post) => {
-        const postDate = new Date(post.created_at);
-        const dateKey = `${postDate.getFullYear()}-${postDate.getMonth() + 1}-${postDate.getDate()}`;
-        if (!dayGroups.has(dateKey)) {
-          dayGroups.set(dateKey, []);
-        }
-        dayGroups.get(dateKey)!.push(post);
-      });
+      appendPostsToStream(posts);
 
-      dayGroups.forEach((postsInDay) => {
-        const dayContainer = document.createElement("div");
-        dayContainer.className = "timeline-day-group";
-
-        postsInDay.forEach((post) => {
-          dayContainer.appendChild(renderTimelineNode(post));
-        });
-
-        streamContainer.appendChild(dayContainer);
-      });
+      // 计算是否还有下一页：当前已拉取的总量是否小于数据库总数，且当前拉到了数据
+      hasMore = (page + 1) * PAGE_SIZE < totalCount && posts.length > 0;
+      currentPage = page;
+      updatePaginationUI();
     } catch (err) {
       console.error("请求异常:", err);
-      if (seq === currentLoadSeq && skeleton) skeleton.style.display = "none";
+      if (seq === currentLoadSeq && !isAppend && skeleton) skeleton.style.display = "none";
     }
+  }
+
+  // 加载下一页更早动态
+  async function loadMore() {
+    if (isLoadingMore || !hasMore) return;
+    isLoadingMore = true;
+
+    if (allLoadedNotice) {
+      allLoadedNotice.style.display = "none";
+      allLoadedNotice.classList.add("hidden");
+    }
+    if (loadMoreBtn) {
+      loadMoreBtn.style.display = "inline-flex";
+      loadMoreBtn.classList.remove("hidden");
+      loadMoreBtn.disabled = true;
+    }
+    if (loadMoreSpinner) loadMoreSpinner.classList.remove("hidden");
+    if (loadMoreIcon) loadMoreIcon.classList.add("hidden");
+    if (loadMoreText) loadMoreText.textContent = "正在加载...";
+
+    await loadPosts(currentPage + 1, true);
+
+    isLoadingMore = false;
+  }
+
+  // 前端 Canvas 智能压缩图片：将手机拍摄的大图（常见 4M~12M）智能缩放至最大 1600px，输出 ~200KB 的高画质 JPEG，解决跨境网络上传慢、超时失败 (TypeError: Load failed)
+  async function compressImage(file: File): Promise<File> {
+    if (!file.type.startsWith("image/") || file.type === "image/gif" || file.type === "image/svg+xml") {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_DIM = 1600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob || blob.size >= file.size) {
+                resolve(file);
+                return;
+              }
+              const cleanName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+              const compressedFile = new File([blob], cleanName, {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            "image/jpeg",
+            0.82
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
   }
 
   // 上传图片到 Supabase Storage
   async function uploadImage(file: File): Promise<string> {
-    const ext = file.name.split(".").pop() || "png";
+    const ext = file.name.split(".").pop() || "jpg";
     const cleanName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
     const filePath = `daily/${cleanName}`;
 
@@ -784,20 +1100,19 @@ const { archivePosts = [] } = Astro.props;
     submitBtn.disabled = true;
     submitSpinner?.classList.remove("hidden");
     submitIcon?.classList.add("hidden");
-    if (submitText) submitText.textContent = "发布中...";
+    if (submitText) submitText.textContent = "准备发布...";
 
     try {
       const uploadedUrls: string[] = [];
-      for (const file of selectedFiles) {
-        try {
-          const url = await uploadImage(file);
-          uploadedUrls.push(url);
-        } catch (uploadErr: any) {
-          console.error("图片上传失败:", uploadErr);
-          alert(`图片上传失败: ${uploadErr.message || '请确保 Supabase Storage 已创建 daily-images 公开存储桶'}`);
-          throw uploadErr;
-        }
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        if (submitText) submitText.textContent = `压缩图片 (${i + 1}/${selectedFiles.length})...`;
+        const compressed = await compressImage(file);
+        if (submitText) submitText.textContent = `上传图片 (${i + 1}/${selectedFiles.length})...`;
+        const url = await uploadImage(compressed);
+        uploadedUrls.push(url);
       }
+      if (submitText) submitText.textContent = "保存动态...";
 
       const rawTags = tagsInput?.value.trim() || "";
       const tags = rawTags
@@ -832,11 +1147,15 @@ const { archivePosts = [] } = Astro.props;
       updateImagePreviews();
       composer?.classList.add("hidden");
 
-      // 重新加载时间轴列表
-      await loadPosts();
+      // 重新加载第一页时间轴列表
+      await loadPosts(0, false);
     } catch (err: any) {
       console.error("发布失败:", err);
-      alert(`发布失败: ${err.message || '请检查权限或网络连接'}`);
+      const isNetworkError = err?.message?.toLowerCase().includes("failed") || err?.name === "TypeError";
+      const hint = isNetworkError
+        ? "网络连接不稳定或跨境请求超时，请稍后重试或检查图片大小"
+        : (err.message || '请检查权限或网络连接');
+      alert(`发布失败: ${hint}`);
     } finally {
       submitBtn.disabled = false;
       submitSpinner?.classList.add("hidden");
@@ -925,12 +1244,20 @@ const { archivePosts = [] } = Astro.props;
         card.style.opacity = "0";
         card.style.transform = "scale(0.95)";
         setTimeout(() => {
+          const dayGroup = card.closest(".timeline-day-group");
           card.remove();
-          if (countBadge) {
-            const currentCount = Math.max(0, parseInt(countBadge.textContent || "1", 10) - 1);
-            countBadge.textContent = String(currentCount);
-            if (currentCount === 0 && emptyState) emptyState.classList.remove("hidden");
+          if (dayGroup && dayGroup.children.length === 0) {
+            dayGroup.remove();
           }
+          totalCount = Math.max(0, totalCount - 1);
+          if (countBadge) {
+            countBadge.textContent = String(totalCount);
+            if (totalCount === 0) {
+              countBadge.classList.add("hidden");
+              if (emptyState) emptyState.classList.remove("hidden");
+            }
+          }
+          updatePaginationUI();
         }, 300);
       }
     } catch (err: any) {
@@ -1062,6 +1389,20 @@ const { archivePosts = [] } = Astro.props;
   });
 
   submitBtn?.addEventListener("click", handlePublish);
+  loadMoreBtn?.addEventListener("click", loadMore);
+
+  // 页面滑到底部时自动触发无限滚动加载更早动态
+  if (typeof window !== "undefined" && "IntersectionObserver" in window && paginationContainer) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMore();
+        }
+      },
+      { rootMargin: "250px" }
+    );
+    observer.observe(paginationContainer);
+  }
 
   // 初始化执行
   initAuth();
