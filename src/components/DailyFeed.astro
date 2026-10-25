@@ -508,6 +508,14 @@ const { archivePosts = [] } = Astro.props;
     created_at: string;
   }
 
+  interface CommentItem {
+    id: string;
+    post_id: string;
+    content: string;
+    author_github: string;
+    created_at: string;
+  }
+
   // DOM 元素引用
   const loginBtn = document.getElementById("github-login-btn");
   const userPanel = document.getElementById("daily-user-panel");
@@ -719,8 +727,20 @@ const { archivePosts = [] } = Astro.props;
     return { display: fullStr, title: fullStr };
   }
 
+  // 内容转义与链接自动解析
+  function escapeAndLinkify(text: string): string {
+    const escaped = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    return escaped.replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-neutral-900 underline decoration-neutral-300 hover:decoration-neutral-900 underline-offset-2 break-all">$1</a>'
+    );
+  }
+
   // 渲染单个时间轴动态节点 (左侧：年月写在一起，下面写日；同一天多条默认只亮最新一条，点选或hover时当前条目日期高亮放大变深)
-  function renderTimelineNode(post: PostItem, isFirstOfDay: boolean): HTMLElement {
+  function renderTimelineNode(post: PostItem, isFirstOfDay: boolean, comments: CommentItem[] = []): HTMLElement {
     const article = document.createElement("article");
     article.id = `post-${post.id}`;
     article.className = "timeline-article flex items-start group relative animate-fade-in";
@@ -869,16 +889,7 @@ const { archivePosts = [] } = Astro.props;
     // 内容区（解析换行与简单链接）
     const contentDiv = document.createElement("div");
     contentDiv.className = "text-sm text-neutral-800 leading-relaxed font-sans break-words whitespace-pre-wrap";
-    
-    const escaped = post.content
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-    const linkified = escaped.replace(
-      /(https?:\/\/[^\s]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-neutral-900 underline decoration-neutral-300 hover:decoration-neutral-900 underline-offset-2 break-all">$1</a>'
-    );
-    contentDiv.innerHTML = linkified;
+    contentDiv.innerHTML = escapeAndLinkify(post.content);
     card.appendChild(contentDiv);
 
     // 标签区 (支持点击直接激活标签筛选；博主可直接添加/编辑标签)
@@ -957,10 +968,251 @@ const { archivePosts = [] } = Astro.props;
       card.appendChild(imgContainer);
     }
 
+    // 动态下方的追记/补充（Comment）区域
+    card.appendChild(renderCommentsSection(post, comments));
+
     rightCol.appendChild(card);
     article.appendChild(rightCol);
 
     return article;
+  }
+
+  // 渲染单个评论/追记项（支持博主删除与相对时间呈现）
+  function createCommentItemElement(comment: CommentItem, post: PostItem): HTMLElement {
+    const item = document.createElement("div");
+    item.className = "comment-item flex items-start justify-between group/comment bg-neutral-50/70 hover:bg-neutral-50/95 border border-neutral-200/50 rounded px-2.5 py-1.5 transition-colors";
+    item.setAttribute("data-comment-id", comment.id);
+
+    const timeInfo = formatCardTime(comment.created_at);
+
+    item.innerHTML = `
+      <div class="min-w-0 flex-1 space-y-0.5">
+        <div class="flex items-center gap-1.5 text-[10px] text-neutral-400 font-mono select-none">
+          <span class="font-medium text-neutral-700">@${comment.author_github}</span>
+          <span class="text-[9px] font-mono bg-neutral-900 text-white px-1 py-0.2 rounded-xs">Author</span>
+          <span>·</span>
+          <time title="${timeInfo.title}">${timeInfo.display}</time>
+        </div>
+        <div class="text-xs text-neutral-800 font-sans leading-relaxed break-words whitespace-pre-wrap">${escapeAndLinkify(comment.content)}</div>
+      </div>
+      ${
+        isAuthor
+          ? '<button type="button" class="btn-del-comment opacity-0 group-hover/comment:opacity-100 text-neutral-350 hover:text-red-600 p-0.5 ml-2 cursor-pointer transition-opacity" title="删除此条追记"><i class="ph ph-trash text-xs"></i></button>'
+          : ""
+      }
+    `;
+
+    if (isAuthor) {
+      const delBtn = item.querySelector(".btn-del-comment");
+      delBtn?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const container = item.closest(".post-comments-container") as HTMLElement | null;
+        await handleDeleteComment(comment.id, post.id, container);
+      });
+    }
+
+    return item;
+  }
+
+  // 渲染动态卡片下方的追记/补充（Comment）区域
+  function renderCommentsSection(post: PostItem, comments: CommentItem[] = []): HTMLElement {
+    const container = document.createElement("div");
+    container.className = "post-comments-container pt-2.5 mt-1 border-t border-neutral-100/80 space-y-1.5";
+    container.setAttribute("data-post-comments", post.id);
+
+    // 如果既没有评论，且不是博主，完全隐藏评论区保持卡片极简干净
+    if (comments.length === 0 && !isAuthor) {
+      container.classList.add("hidden");
+      return container;
+    }
+
+    // 1. 如果评论数量 > 1 条，根据要求：默认只显示最新一条，其余折叠
+    if (comments.length > 1) {
+      const olderComments = comments.slice(0, comments.length - 1);
+      const latestComment = comments[comments.length - 1];
+
+      // 折叠/展开更早评论控制按钮
+      const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className = "btn-toggle-comments inline-flex items-center gap-1 text-[11px] font-mono text-neutral-400 hover:text-neutral-700 cursor-pointer select-none py-0.5 transition-colors";
+      toggleBtn.innerHTML = `<i class="ph ph-caret-right text-[10px] transition-transform"></i><span>展开更早的 ${olderComments.length} 条追记</span>`;
+
+      // 折叠容器
+      const olderWrapper = document.createElement("div");
+      olderWrapper.className = "older-comments hidden space-y-1.5";
+      olderComments.forEach((c) => {
+        olderWrapper.appendChild(createCommentItemElement(c, post));
+      });
+
+      let isExpanded = false;
+      toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        isExpanded = !isExpanded;
+        if (isExpanded) {
+          olderWrapper.classList.remove("hidden");
+          toggleBtn.innerHTML = `<i class="ph ph-caret-down text-[10px] transition-transform"></i><span>收起更早追记</span>`;
+        } else {
+          olderWrapper.classList.add("hidden");
+          toggleBtn.innerHTML = `<i class="ph ph-caret-right text-[10px] transition-transform"></i><span>展开更早的 ${olderComments.length} 条追记</span>`;
+        }
+      });
+
+      container.appendChild(toggleBtn);
+      container.appendChild(olderWrapper);
+
+      // 显示最新的一条评论
+      container.appendChild(createCommentItemElement(latestComment, post));
+    } else if (comments.length === 1) {
+      // 只有 1 条，直接显示该条
+      container.appendChild(createCommentItemElement(comments[0], post));
+    }
+
+    // 2. 如果是博主本人，提供追加评论的入口与内联输入框
+    if (isAuthor) {
+      const actionRow = document.createElement("div");
+      actionRow.className = "comment-action-row pt-1";
+
+      const openInputBtn = document.createElement("button");
+      openInputBtn.type = "button";
+      openInputBtn.className = "btn-open-comment inline-flex items-center gap-1 text-[11px] font-mono text-neutral-400 hover:text-neutral-800 cursor-pointer select-none py-0.5 transition-colors";
+      openInputBtn.innerHTML = `<i class="ph ph-chat-circle-dots text-xs"></i><span>something more？</span>`;
+
+      const inputForm = document.createElement("div");
+      inputForm.className = "comment-input-form hidden pt-1 flex items-center gap-1.5";
+      inputForm.innerHTML = `
+        <input type="text" placeholder="记录此刻的补充想法..." class="comment-input-field grow bg-neutral-50/80 border border-neutral-200 focus:border-neutral-900 rounded px-2.5 py-1 text-xs text-neutral-800 placeholder:text-neutral-400 font-sans focus:outline-none transition-colors" />
+        <button type="button" class="btn-send-comment text-xs font-mono bg-neutral-900 hover:bg-neutral-800 text-white px-2.5 py-1 rounded cursor-pointer select-none shrink-0 transition-colors">发送</button>
+        <button type="button" class="btn-cancel-comment text-xs font-mono text-neutral-400 hover:text-neutral-700 px-1 py-1 cursor-pointer select-none shrink-0">取消</button>
+      `;
+
+      const inputField = inputForm.querySelector(".comment-input-field") as HTMLInputElement | null;
+      const sendBtn = inputForm.querySelector(".btn-send-comment") as HTMLButtonElement | null;
+      const cancelBtn = inputForm.querySelector(".btn-cancel-comment");
+
+      openInputBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openInputBtn.classList.add("hidden");
+        inputForm.classList.remove("hidden");
+        setTimeout(() => inputField?.focus(), 50);
+      });
+
+      cancelBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (inputField) inputField.value = "";
+        inputForm.classList.add("hidden");
+        openInputBtn.classList.remove("hidden");
+      });
+
+      const doSend = async () => {
+        const text = inputField?.value.trim();
+        if (!text) return;
+        if (sendBtn) {
+          sendBtn.disabled = true;
+          sendBtn.textContent = "...";
+        }
+        await handleAddComment(post.id, text, container);
+      };
+
+      sendBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        doSend();
+      });
+
+      inputField?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          doSend();
+        } else if (e.key === "Escape") {
+          inputField.value = "";
+          inputForm.classList.add("hidden");
+          openInputBtn.classList.remove("hidden");
+        }
+      });
+
+      actionRow.appendChild(openInputBtn);
+      actionRow.appendChild(inputForm);
+      container.appendChild(actionRow);
+    }
+
+    return container;
+  }
+
+  // 发表追记评论
+  async function handleAddComment(postId: string, text: string, container?: HTMLElement | null) {
+    if (!currentUser || !isAuthor) {
+      alert("仅博主可以发表追记补充。");
+      return;
+    }
+    try {
+      const githubUsername = currentUser.user_metadata?.user_name || AUTHOR_GITHUB;
+      const { error } = await supabase
+        .from("daily_comments")
+        .insert([
+          {
+            post_id: postId,
+            content: text,
+            author_github: githubUsername,
+          },
+        ]);
+
+      if (error) throw error;
+
+      await refreshSinglePostComments(postId, container);
+    } catch (err: any) {
+      console.error("发表追记失败:", err);
+      alert(`发表失败: ${err.message || "请检查网络或 Supabase 权限"}`);
+    }
+  }
+
+  // 删除某条追记评论
+  async function handleDeleteComment(commentId: string, postId: string, container?: HTMLElement | null) {
+    const confirmed = await showConfirmModal({
+      title: "删除追记",
+      message: "确定要彻底删除这条补充追记吗？删除后无法恢复。",
+      confirmText: "确定删除",
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("daily_comments")
+        .delete()
+        .eq("id", commentId);
+
+      if (error) throw error;
+
+      await refreshSinglePostComments(postId, container);
+    } catch (err: any) {
+      console.error("删除追记失败:", err);
+      alert(`删除失败: ${err.message || "请检查网络或 Supabase 权限"}`);
+    }
+  }
+
+  // 单卡片评论原位无损刷新（不重载整页与滚动条）
+  async function refreshSinglePostComments(postId: string, container?: HTMLElement | null) {
+    if (!container) {
+      container = document.querySelector(`.post-comments-container[data-post-comments="${postId}"]`);
+    }
+    if (!container) return;
+
+    try {
+      const { data: commentsData } = await supabase
+        .from("daily_comments")
+        .select("*")
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true });
+
+      const newComments: CommentItem[] = commentsData || [];
+      const parentCard = container.parentElement;
+      if (parentCard) {
+        const dummyPost: PostItem = { id: postId, author_github: AUTHOR_GITHUB, content: "", created_at: "" };
+        const newCommentsEl = renderCommentsSection(dummyPost, newComments);
+        parentCard.replaceChild(newCommentsEl, container);
+      }
+    } catch (e) {
+      console.error("刷新追记失败:", e);
+    }
   }
 
   // 大图预览交互 (支持单条动态多图画廊左右切换、键盘箭头与手机滑动手势)
@@ -1577,12 +1829,13 @@ const { archivePosts = [] } = Astro.props;
   }
 
   // 将动态追加渲染到时间轴流中（智能识别是否跨天，同天自动合流）
-  function appendPostsToStream(posts: PostItem[]) {
+  function appendPostsToStream(posts: PostItem[], commentsMap: Record<string, CommentItem[]> = {}) {
     if (!streamContainer) return;
 
     posts.forEach((post) => {
       const postDate = new Date(post.created_at);
       const dateKey = `${postDate.getFullYear()}-${postDate.getMonth() + 1}-${postDate.getDate()}`;
+      const postComments = commentsMap[post.id] || [];
 
       let lastGroup = streamContainer.lastElementChild as HTMLElement | null;
       if (
@@ -1590,12 +1843,12 @@ const { archivePosts = [] } = Astro.props;
         lastGroup.classList.contains("timeline-day-group") &&
         lastGroup.getAttribute("data-date-key") === dateKey
       ) {
-        lastGroup.appendChild(renderTimelineNode(post, false));
+        lastGroup.appendChild(renderTimelineNode(post, false, postComments));
       } else {
         const newGroup = document.createElement("div");
         newGroup.className = "timeline-day-group";
         newGroup.setAttribute("data-date-key", dateKey);
-        newGroup.appendChild(renderTimelineNode(post, true));
+        newGroup.appendChild(renderTimelineNode(post, true, postComments));
         streamContainer.appendChild(newGroup);
       }
     });
@@ -1713,7 +1966,28 @@ const { archivePosts = [] } = Astro.props;
 
       if (emptyState) emptyState.classList.add("hidden");
 
-      appendPostsToStream(posts);
+      // 批量查询当前页动态的所有追记评论
+      let commentsMap: Record<string, CommentItem[]> = {};
+      if (posts.length > 0) {
+        try {
+          const postIds = posts.map((p) => p.id);
+          const { data: commentsData } = await supabase
+            .from("daily_comments")
+            .select("*")
+            .in("post_id", postIds)
+            .order("created_at", { ascending: true });
+          if (commentsData) {
+            commentsData.forEach((c: any) => {
+              if (!commentsMap[c.post_id]) commentsMap[c.post_id] = [];
+              commentsMap[c.post_id].push(c);
+            });
+          }
+        } catch (e) {
+          // daily_comments 表尚未创建时的保底容错
+        }
+      }
+
+      appendPostsToStream(posts, commentsMap);
 
       // 计算是否还有下一页：当前已拉取的总量是否小于数据库总数，且当前拉到了数据
       hasMore = (page + 1) * PAGE_SIZE < totalCount && posts.length > 0;
