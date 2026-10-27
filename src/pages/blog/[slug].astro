@@ -27,7 +27,7 @@ const { post } = Astro.props;
 const { Content } = await render(post);
 
 // Calculate dynamic reading time (assuming ~400 Chinese characters/English words per minute)
-const cleanBody = post.body.replace(/\s+/g, '');
+const cleanBody = (post.body || '').replace(/\s+/g, '');
 const readingTime = Math.max(1, Math.round(cleanBody.length / 350));
 ---
 

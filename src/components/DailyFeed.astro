@@ -641,6 +641,17 @@ const { archivePosts = [] } = Astro.props;
   let currentUser: any = null;
   let isAuthor = false;
 
+  // 闭眼 SVG（弧形闭合眼线+睫毛）vs 睁眼图标（经典大眼睛）
+  const closedEyeSvg = `
+    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 10s3.5 6 10 6 10-6 10-6"/>
+      <path d="M5 13.5L3 17"/>
+      <path d="M9 16L8 20"/>
+      <path d="M15 16L16 20"/>
+      <path d="M19 13.5L21 17"/>
+    </svg>
+  `;
+
   function showConfirmModal(options: {
     title: string;
     message: string;
@@ -737,6 +748,48 @@ const { archivePosts = [] } = Astro.props;
       /(https?:\/\/[^\s]+)/g,
       '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-neutral-900 underline decoration-neutral-300 hover:decoration-neutral-900 underline-offset-2 break-all">$1</a>'
     );
+  }
+
+  // 渲染单条动态卡片内部的标签区域
+  function renderPostTagsArea(tagsContainer: HTMLElement, post: PostItem) {
+    tagsContainer.innerHTML = "";
+    const hasTags = post.tags && post.tags.length > 0;
+    if (hasTags) {
+      post.tags!
+        .filter((t) => t.trim().length > 0)
+        .forEach((rawTag) => {
+          const cleanTag = rawTag.replace(/^#/, "").trim();
+          const tagBtn = document.createElement("button");
+          tagBtn.type = "button";
+          const isCurrentActive = currentTagFilter === cleanTag;
+          tagBtn.className = isCurrentActive
+            ? "text-[11px] font-mono text-white bg-neutral-900 border border-neutral-900 px-1.5 py-0.5 rounded cursor-pointer transition-colors select-none"
+            : "text-[11px] font-mono text-neutral-500 hover:text-neutral-900 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/60 hover:border-neutral-300 px-1.5 py-0.5 rounded cursor-pointer transition-colors select-none";
+          tagBtn.textContent = `#${cleanTag}`;
+          tagBtn.title = `点击筛选标签 #${cleanTag}`;
+          tagBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setTagFilter(isCurrentActive ? null : cleanTag);
+          });
+          tagsContainer.appendChild(tagBtn);
+        });
+    }
+
+    // 如果是博主，显示 [+ 添加标签] / [编辑标签] 快捷胶囊按钮
+    if (isAuthor) {
+      const editPostTagBtn = document.createElement("button");
+      editPostTagBtn.type = "button";
+      editPostTagBtn.className = "text-[11px] font-mono text-neutral-400 hover:text-neutral-800 bg-neutral-50/60 hover:bg-neutral-100 border border-dashed border-neutral-200 hover:border-neutral-400 px-1.5 py-0.5 rounded cursor-pointer transition-colors select-none inline-flex items-center gap-0.5";
+      editPostTagBtn.innerHTML = hasTags
+        ? '<i class="ph ph-tag-chevron text-[10px]"></i><span>编辑标签</span>'
+        : '<i class="ph ph-plus text-[10px]"></i><span>添加标签</span>';
+      editPostTagBtn.title = "为已发布的这条动态添加或修改标签";
+      editPostTagBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openEditPostTagsModal(post);
+      });
+      tagsContainer.appendChild(editPostTagBtn);
+    }
   }
 
   // 渲染单个时间轴动态节点 (左侧：年月写在一起，下面写日；同一天多条默认只亮最新一条，点选或hover时当前条目日期高亮放大变深)
@@ -838,24 +891,14 @@ const { archivePosts = [] } = Astro.props;
         ? "text-neutral-700 hover:text-neutral-900 p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer select-none flex items-center justify-center"
         : "text-neutral-350 hover:text-neutral-700 p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer select-none flex items-center justify-center";
       privacyBtn.title = isPriv ? "当前状态：仅我可见（点击公开）" : "当前状态：公开（点击设为仅我可见）";
-      
-      // 闭眼 SVG（弧形闭合眼线+睫毛）vs 睁眼图标（经典大眼睛）
-      const closedEyeSvg = `
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2 10s3.5 6 10 6 10-6 10-6"/>
-          <path d="M5 13.5L3 17"/>
-          <path d="M9 16L8 20"/>
-          <path d="M15 16L16 20"/>
-          <path d="M19 13.5L21 17"/>
-        </svg>
-      `;
 
       privacyBtn.innerHTML = isPriv
         ? closedEyeSvg
         : '<i class="ph ph-eye text-sm"></i>';
       privacyBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handleTogglePrivacy(post.id, !isPriv, privacyBtn);
+        const currentPriv = Boolean(post.is_private);
+        await handleTogglePrivacy(post.id, !currentPriv, privacyBtn, post);
       });
       rightInfo.appendChild(privacyBtn);
 
@@ -896,44 +939,8 @@ const { archivePosts = [] } = Astro.props;
     const hasTags = post.tags && post.tags.length > 0;
     if (hasTags || isAuthor) {
       const tagsDiv = document.createElement("div");
-      tagsDiv.className = "flex flex-wrap items-center gap-1.5 pt-1";
-      if (hasTags) {
-        post.tags!
-          .filter((t) => t.trim().length > 0)
-          .forEach((rawTag) => {
-            const cleanTag = rawTag.replace(/^#/, "").trim();
-            const tagBtn = document.createElement("button");
-            tagBtn.type = "button";
-            const isCurrentActive = currentTagFilter === cleanTag;
-            tagBtn.className = isCurrentActive
-              ? "text-[11px] font-mono text-white bg-neutral-900 border border-neutral-900 px-1.5 py-0.5 rounded cursor-pointer transition-colors select-none"
-              : "text-[11px] font-mono text-neutral-500 hover:text-neutral-900 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/60 hover:border-neutral-300 px-1.5 py-0.5 rounded cursor-pointer transition-colors select-none";
-            tagBtn.textContent = `#${cleanTag}`;
-            tagBtn.title = `点击筛选标签 #${cleanTag}`;
-            tagBtn.addEventListener("click", (e) => {
-              e.stopPropagation();
-              setTagFilter(isCurrentActive ? null : cleanTag);
-            });
-            tagsDiv.appendChild(tagBtn);
-          });
-      }
-
-      // 如果是博主，显示 [+ 添加标签] / [编辑标签] 快捷胶囊按钮
-      if (isAuthor) {
-        const editPostTagBtn = document.createElement("button");
-        editPostTagBtn.type = "button";
-        editPostTagBtn.className = "text-[11px] font-mono text-neutral-400 hover:text-neutral-800 bg-neutral-50/60 hover:bg-neutral-100 border border-dashed border-neutral-200 hover:border-neutral-400 px-1.5 py-0.5 rounded cursor-pointer transition-colors select-none inline-flex items-center gap-0.5";
-        editPostTagBtn.innerHTML = hasTags
-          ? '<i class="ph ph-tag-chevron text-[10px]"></i><span>编辑标签</span>'
-          : '<i class="ph ph-plus text-[10px]"></i><span>添加标签</span>';
-        editPostTagBtn.title = "为已发布的这条动态添加或修改标签";
-        editPostTagBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          openEditPostTagsModal(post);
-        });
-        tagsDiv.appendChild(editPostTagBtn);
-      }
-
+      tagsDiv.className = "post-tags-container flex flex-wrap items-center gap-1.5 pt-1";
+      renderPostTagsArea(tagsDiv, post);
       card.appendChild(tagsDiv);
     }
 
@@ -997,7 +1004,7 @@ const { archivePosts = [] } = Astro.props;
       </div>
       ${
         isAuthor
-          ? '<button type="button" class="btn-del-comment opacity-0 group-hover/comment:opacity-100 text-neutral-350 hover:text-red-600 p-0.5 ml-2 cursor-pointer transition-opacity" title="删除此条追记"><i class="ph ph-trash text-xs"></i></button>'
+          ? '<button type="button" class="btn-del-comment opacity-60 sm:opacity-0 sm:group-hover/comment:opacity-100 text-neutral-400 hover:text-red-600 p-1 -mr-1 ml-1.5 cursor-pointer transition-all shrink-0" title="删除此条追记"><i class="ph ph-trash text-xs"></i></button>'
           : ""
       }
     `;
@@ -1901,6 +1908,7 @@ const { archivePosts = [] } = Astro.props;
     const seq = ++currentLoadSeq;
     try {
       if (!isAppend) {
+        page = 0; // 核心保障：非追加模式下始终从第 0 页开始查询，彻底杜绝中间页码导致最新动态被裁切丢失的范围错位 bug
         currentPage = 0;
         if (skeleton) skeleton.style.display = "block";
         if (paginationContainer) paginationContainer.classList.add("hidden");
@@ -2192,7 +2200,7 @@ const { archivePosts = [] } = Astro.props;
   }
 
   // 切换某条动态的隐私可见性 (公开 <-> 仅我可见)
-  async function handleTogglePrivacy(postId: string, newPrivateState: boolean, btn?: HTMLButtonElement) {
+  async function handleTogglePrivacy(postId: string, newPrivateState: boolean, btn?: HTMLButtonElement, post?: PostItem) {
     try {
       if (btn) {
         btn.disabled = true;
@@ -2211,8 +2219,19 @@ const { archivePosts = [] } = Astro.props;
 
       console.log(`[DailyFeed] 成功将动态 ${postId} 可见性更新为:`, newPrivateState, data);
 
-      // 重新加载并渲染动态列表
-      await loadPosts();
+      if (post) {
+        post.is_private = newPrivateState;
+      }
+
+      // 原位静默更新图标与状态，绝不重载列表或导致滚动条跳动
+      if (btn) {
+        btn.disabled = false;
+        btn.className = newPrivateState
+          ? "text-neutral-700 hover:text-neutral-900 p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer select-none flex items-center justify-center"
+          : "text-neutral-350 hover:text-neutral-700 p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer select-none flex items-center justify-center";
+        btn.title = newPrivateState ? "当前状态：仅我可见（点击公开）" : "当前状态：公开（点击设为仅我可见）";
+        btn.innerHTML = newPrivateState ? closedEyeSvg : '<i class="ph ph-eye text-sm"></i>';
+      }
     } catch (err: any) {
       console.error("切换可见性失败:", err);
       alert(`更新可见性失败: ${err.message || '请检查网络或 Supabase RLS 策略'}`);
@@ -2623,7 +2642,10 @@ const { archivePosts = [] } = Astro.props;
 
       if (error) throw error;
 
-      // 如果包含新标签，同步 upsert 到 daily_tags 表
+      // 1. 同步内存中当前 post 的 tags
+      editingPost.tags = newTags;
+
+      // 2. 如果包含新标签，同步 upsert 到 daily_tags 表
       if (newTags.length > 0) {
         try {
           const rows = newTags.map((name) => ({ name }));
@@ -2631,9 +2653,41 @@ const { archivePosts = [] } = Astro.props;
         } catch (e) {}
       }
 
+      // 3. 原位更新该卡片内部的标签胶囊区，绝不重载整页或切断当前已加载的时间轴
+      const postArticle = document.getElementById(`post-${editingPost.id}`);
+      if (postArticle) {
+        let tagsContainer = postArticle.querySelector(".post-tags-container") as HTMLElement | null;
+        if (!tagsContainer) {
+          const cardEl = postArticle.querySelector(".bg-white");
+          if (cardEl) {
+            tagsContainer = document.createElement("div");
+            tagsContainer.className = "post-tags-container flex flex-wrap items-center gap-1.5 pt-1";
+            const commentsContainer = cardEl.querySelector(".post-comments-container");
+            if (commentsContainer) cardEl.insertBefore(tagsContainer, commentsContainer);
+            else cardEl.appendChild(tagsContainer);
+          }
+        }
+        if (tagsContainer) {
+          renderPostTagsArea(tagsContainer, editingPost);
+        }
+
+        // 如果用户当前正在根据某标签进行筛选，且编辑后该动态已不含该筛选标签，优雅淡出移除
+        if (currentTagFilter && !newTags.includes(currentTagFilter)) {
+          postArticle.style.opacity = "0";
+          postArticle.style.transform = "scale(0.98)";
+          setTimeout(() => {
+            const dayGroup = postArticle.closest(".timeline-day-group");
+            postArticle.remove();
+            if (dayGroup && dayGroup.children.length === 0) {
+              dayGroup.remove();
+            }
+          }, 200);
+        }
+      }
+
       closeEditPostTagsModal();
+      // 4. 静默刷新标签筛选栏（更新可用标签池与动态计数），无需刷新时间轴
       await loadAllTags();
-      await loadPosts(currentPage, false);
     } catch (err: any) {
       console.error("更新动态标签失败:", err);
       alert(`保存失败: ${err.message || "请检查网络或权限"}`);
