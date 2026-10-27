@@ -14,7 +14,7 @@ const projects = await getCollection("projects");
 // Sort and slice
 const latestTechPosts = techPosts
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-    .slice(0, 3);
+    .slice(0, 5);
 const latestDailyPosts = dailyPosts
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
     .slice(0, 2);
@@ -213,19 +213,27 @@ const hasBlogPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts
                     {
                         latestTechPosts.length > 0 ? (
                             <div class="flex flex-col">
-                                {latestTechPosts.map((post) => (
-                                    <a
-                                        href={`/blog/${post.id}`}
-                                        class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
-                                    >
-                                        <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4">
-                                            {post.data.title}
-                                        </span>
-                                        <span class="font-mono text-xs text-neutral-400 mt-1 sm:mt-0">
-                                            {formatDate(post.data.date)}
-                                        </span>
-                                    </a>
-                                ))}
+                                {latestTechPosts.map((post) => {
+                                    const postType = post.data.type || "engineering";
+                                    return (
+                                        <a
+                                            href={`/blog/${post.id}`}
+                                            class="group flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors -mx-2 px-2 rounded-sm"
+                                        >
+                                            <span class="text-neutral-900 font-medium group-hover:underline decoration-neutral-300 underline-offset-4 truncate pr-4">
+                                                {post.data.title}
+                                            </span>
+                                            <div class="flex items-center space-x-3 mt-1 sm:mt-0 shrink-0 font-mono text-xs text-neutral-400">
+                                                <span class="text-[11px] text-neutral-400">
+                                                    [{postType === "note" ? "note" : "eng"}]
+                                                </span>
+                                                <span>
+                                                    {formatDate(post.data.date)}
+                                                </span>
+                                            </div>
+                                        </a>
+                                    );
+                                })}
                             </div>
                         ) : (
                             <div class="text-center py-10 text-neutral-400 font-mono text-xs">

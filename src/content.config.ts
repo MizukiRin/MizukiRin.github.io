@@ -8,6 +8,7 @@ const blogSchema = z.object({
     tags: z.array(z.string()).optional(),
     project: z.string().optional(), // Used to associate projects
     draft: z.boolean().optional().default(false), // Draft post support (hidden in production)
+    type: z.enum(['engineering', 'note']).optional().default('engineering'), // 'engineering' or 'note'
 });
 
 export const collections = {
