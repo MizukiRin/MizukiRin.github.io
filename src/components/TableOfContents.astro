@@ -1,0 +1,403 @@
+---
+// src/components/TableOfContents.astro
+// 文章大纲导航组件：支持 H2~H4 层级树状展示、默认仅展示二级标题、纯图标一键展开细目、平滑锚点跳转、Scrollspy 滚动高亮与阅读百分比实时计算。
+// 移动端支持：顶部嵌入式折叠卡片 (isMobile) + 独立悬浮按钮及滑出抽屉 (isMobileDrawer)。
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+  isMobile?: boolean;
+  isMobileDrawer?: boolean;
+}
+
+const { headings = [], isMobile = false, isMobileDrawer = false } = Astro.props;
+
+// 仅提取 H2 ~ H4 标题
+const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 4);
+const hasSubHeadings = tocHeadings.some((h) => h.depth > 2);
+
+if (tocHeadings.length === 0) {
+  return null;
+}
+---
+
+{
+  isMobileDrawer ? (
+    <!-- 移动端右下角微型悬浮按钮 (FAB) + 底部滑出抽屉 (Bottom Sheet) -->
+    <!-- 独立挂在最外层，确保 position: fixed 严格贴合视口，避免被容器 transform 截获 -->
+    <div class="mobile-drawer-layer xl:hidden">
+      <!-- 1. 悬浮按钮 (FAB): 滚动超过 80px 平滑淡入，带毛玻璃与微阴影 -->
+      <button
+        type="button"
+        id="mobile-toc-fab"
+        class="fixed right-5 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-50 w-10 h-10 rounded-full bg-white/95 backdrop-blur-md border border-neutral-300 shadow-md flex items-center justify-center text-neutral-700 hover:text-neutral-900 active:scale-95 transition-all duration-300 opacity-0 translate-y-3 pointer-events-none cursor-pointer"
+        title="查看文章大纲"
+        aria-label="查看文章大纲"
+      >
+        <i class="ph ph-list-dashes text-lg" />
+      </button>
+
+      <!-- 2. 底部滑出抽屉 (Bottom Sheet) -->
+      <div
+        id="mobile-toc-drawer-backdrop"
+        class="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs z-[60] hidden opacity-0 transition-opacity duration-200"
+      >
+        <div
+          id="mobile-toc-drawer"
+          class="fixed bottom-0 inset-x-0 bg-white rounded-t-2xl border-t border-neutral-200 shadow-2xl max-h-[75vh] flex flex-col transform translate-y-full transition-transform duration-250 ease-out z-[61] pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
+          <!-- 抽屉头部 -->
+          <div class="flex items-center justify-between px-5 py-3.5 border-b border-neutral-100 select-none">
+            <div class="flex items-center space-x-2 font-mono text-xs">
+              <i class="ph ph-list-dashes text-sm text-neutral-500" />
+              <span class="font-medium uppercase tracking-wider text-neutral-800 text-[11px]">Outline</span>
+              <span class="text-neutral-300">·</span>
+              <span class="reading-progress-percent text-neutral-500 font-mono text-[11px]">0%</span>
+            </div>
+            <button
+              type="button"
+              id="mobile-toc-drawer-close"
+              class="p-1.5 -mr-1 text-neutral-400 hover:text-neutral-800 rounded-full hover:bg-neutral-100 transition-colors cursor-pointer flex items-center justify-center"
+              title="关闭大纲"
+              aria-label="关闭大纲"
+            >
+              <i class="ph ph-x text-base" />
+            </button>
+          </div>
+
+          <!-- 抽屉内目录列表 -->
+          <div class="overflow-y-auto px-5 py-3 text-xs font-sans space-y-1 divide-y divide-neutral-50">
+            {tocHeadings.map((h) => {
+              const isH2 = h.depth === 2;
+              const isH3 = h.depth === 3;
+              return (
+                <a
+                  href={`#${h.slug}`}
+                  data-slug={h.slug}
+                  class={`mobile-drawer-link block py-2.5 transition-colors ${
+                    isH2
+                      ? "font-medium text-neutral-800 hover:text-neutral-950"
+                      : isH3
+                      ? "text-[11px] text-neutral-500 hover:text-neutral-900 pl-3.5"
+                      : "text-[10px] text-neutral-400 hover:text-neutral-800 pl-7"
+                  }`}
+                >
+                  {h.text}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : isMobile ? (
+    <!-- 移动端/窄屏：正文开头嵌入式折叠卡片 -->
+    <div class="mobile-toc-container xl:hidden my-6 border border-neutral-200/80 rounded-sm bg-neutral-50/60 overflow-hidden select-none">
+      <button
+        type="button"
+        class="mobile-toc-trigger w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-mono text-neutral-600 hover:text-neutral-900 transition-colors cursor-pointer"
+        aria-expanded="false"
+      >
+        <div class="flex items-center space-x-2">
+          <i class="ph ph-list-dashes text-sm text-neutral-500" />
+          <span class="font-medium tracking-wider uppercase text-[11px] text-neutral-800">Outline</span>
+          <span>·</span>
+          <span class="reading-progress-percent text-neutral-500 font-mono text-[11px]">0%</span>
+        </div>
+        <i class="mobile-toc-caret ph ph-caret-down text-xs transition-transform duration-200 text-neutral-400" />
+      </button>
+
+      <div class="mobile-toc-content hidden px-3.5 pb-3 pt-1 border-t border-neutral-100 text-xs font-sans space-y-1">
+        {tocHeadings.map((h) => {
+          const isH2 = h.depth === 2;
+          const isH3 = h.depth === 3;
+          return (
+            <a
+              href={`#${h.slug}`}
+              data-slug={h.slug}
+              class={`mobile-toc-link block py-1.5 transition-colors ${
+                isH2
+                  ? "font-medium text-neutral-800 hover:text-neutral-950"
+                  : isH3
+                  ? "text-[11px] text-neutral-500 hover:text-neutral-900 pl-3"
+                  : "text-[10px] text-neutral-400 hover:text-neutral-800 pl-6"
+              }`}
+            >
+              {h.text}
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  ) : (
+    <!-- 桌面宽屏端：左侧悬浮 Sticky 目录树 -->
+    <nav class="desktop-toc-widget space-y-3 font-mono" aria-label="文章目录大纲">
+      <!-- 头部：OUTLINE · 0% 与纯图标展开/收起切换按钮 -->
+      <div class="flex items-center justify-between text-xs text-neutral-400 select-none pb-2 border-b border-neutral-100">
+        <div class="flex items-center space-x-1.5">
+          <span class="tracking-wider uppercase text-neutral-500 font-medium text-[11px]">Outline</span>
+          <span>·</span>
+          <span class="reading-progress-percent text-[11px] font-mono text-neutral-600">0%</span>
+        </div>
+
+        {hasSubHeadings && (
+          <button
+            type="button"
+            class="toc-toggle-depth-btn p-1 text-neutral-400 hover:text-neutral-900 rounded hover:bg-neutral-100 transition-colors cursor-pointer flex items-center justify-center -mr-1"
+            title="展开/收起细分子标题"
+            aria-label="展开或折叠子标题"
+          >
+            <i class="toc-toggle-icon ph ph-caret-down text-xs transition-transform duration-200" />
+          </button>
+        )}
+      </div>
+
+      <!-- 目录项链接列表：默认仅展示 H2，点击按钮展开 H3/H4 -->
+      <div class="toc-links-list relative border-l border-neutral-200/80 my-2 space-y-0.5 text-xs font-sans">
+        {tocHeadings.map((h) => {
+          const isH2 = h.depth === 2;
+          const isH3 = h.depth === 3;
+          return (
+            <a
+              href={`#${h.slug}`}
+              data-slug={h.slug}
+              data-depth={h.depth}
+              class={`toc-link block transition-all py-1 truncate -ml-[1px] border-l-2 border-transparent ${
+                isH2
+                  ? "toc-item-h2 font-medium text-neutral-600 hover:text-neutral-900 pl-3"
+                  : isH3
+                  ? "toc-sub-item hidden text-[11px] text-neutral-400 hover:text-neutral-800 pl-5"
+                  : "toc-sub-item hidden text-[10px] text-neutral-400 hover:text-neutral-800 pl-7"
+              }`}
+              title={h.text}
+            >
+              {h.text}
+            </a>
+          );
+        })}
+      </div>
+    </nav>
+  )
+}
+
+<script>
+  function initTOC() {
+    const progressEls = document.querySelectorAll(".reading-progress-percent");
+    const headingEls = Array.from(document.querySelectorAll("article.prose h2, article.prose h3, article.prose h4")) as HTMLElement[];
+    const tocLinks = document.querySelectorAll(".toc-link") as NodeListOf<HTMLAnchorElement>;
+    const mobileTocLinks = document.querySelectorAll(".mobile-toc-link") as NodeListOf<HTMLAnchorElement>;
+    const mobileDrawerLinks = document.querySelectorAll(".mobile-drawer-link") as NodeListOf<HTMLAnchorElement>;
+
+    let isExpanded = false;
+
+    // 1. 桌面端展开/收起子级目录按钮
+    const toggleDepthBtns = document.querySelectorAll(".toc-toggle-depth-btn");
+    toggleDepthBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        isExpanded = !isExpanded;
+        const subItems = document.querySelectorAll(".toc-sub-item");
+        const icons = document.querySelectorAll(".toc-toggle-icon");
+
+        subItems.forEach((item) => {
+          if (isExpanded) {
+            item.classList.remove("hidden");
+          } else {
+            item.classList.add("hidden");
+          }
+        });
+
+        icons.forEach((icon) => {
+          if (isExpanded) {
+            icon.classList.add("rotate-180");
+          } else {
+            icon.classList.remove("rotate-180");
+          }
+        });
+
+        updateScrollspy();
+      });
+    });
+
+    // 2. 移动端正文顶部折叠卡片交互
+    const mobileContainers = document.querySelectorAll(".mobile-toc-container");
+    mobileContainers.forEach((container) => {
+      const trigger = container.querySelector(".mobile-toc-trigger");
+      const content = container.querySelector(".mobile-toc-content");
+      const caret = container.querySelector(".mobile-toc-caret");
+
+      trigger?.addEventListener("click", () => {
+        const isHidden = content?.classList.contains("hidden");
+        if (isHidden) {
+          content?.classList.remove("hidden");
+          caret?.classList.add("rotate-180");
+          trigger.setAttribute("aria-expanded", "true");
+        } else {
+          content?.classList.add("hidden");
+          caret?.classList.remove("rotate-180");
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      content?.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => {
+          content.classList.add("hidden");
+          caret?.classList.remove("rotate-180");
+          trigger?.setAttribute("aria-expanded", "false");
+        });
+      });
+    });
+
+    // 3. 移动端右下角悬浮按钮 (FAB) 与滑出抽屉 (Bottom Sheet) 交互
+    const fabBtn = document.getElementById("mobile-toc-fab");
+    const drawerBackdrop = document.getElementById("mobile-toc-drawer-backdrop");
+    const drawer = document.getElementById("mobile-toc-drawer");
+    const drawerCloseBtn = document.getElementById("mobile-toc-drawer-close");
+
+    function openDrawer() {
+      if (!drawerBackdrop || !drawer) return;
+      drawerBackdrop.classList.remove("hidden");
+      void drawerBackdrop.offsetWidth;
+      drawerBackdrop.classList.remove("opacity-0");
+      drawer.classList.remove("translate-y-full");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer() {
+      if (!drawerBackdrop || !drawer) return;
+      drawerBackdrop.classList.add("opacity-0");
+      drawer.classList.add("translate-y-full");
+      setTimeout(() => {
+        drawerBackdrop.classList.add("hidden");
+        document.body.style.overflow = "";
+      }, 250);
+    }
+
+    fabBtn?.addEventListener("click", openDrawer);
+    drawerCloseBtn?.addEventListener("click", closeDrawer);
+    drawerBackdrop?.addEventListener("click", (e) => {
+      if (e.target === drawerBackdrop) {
+        closeDrawer();
+      }
+    });
+
+    mobileDrawerLinks.forEach((link) => {
+      link.addEventListener("click", () => {
+        closeDrawer();
+      });
+    });
+
+    // 4. Scrollspy 与滚动进度监听
+    function updateScrollspy() {
+      const scrollY = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+
+      // 百分比更新
+      let percent = 0;
+      if (scrollHeight > 0) {
+        percent = Math.min(100, Math.max(0, Math.round((scrollY / scrollHeight) * 100)));
+      }
+      progressEls.forEach((el) => {
+        el.textContent = `${percent}%`;
+      });
+
+      // 移动端右下角 FAB 悬浮按钮显隐：只要向下滚动超过 80px 就平滑显现
+      if (fabBtn) {
+        if (scrollY > 80) {
+          fabBtn.classList.remove("opacity-0", "translate-y-3", "pointer-events-none");
+          fabBtn.classList.add("opacity-100", "translate-y-0", "pointer-events-auto");
+        } else {
+          fabBtn.classList.add("opacity-0", "translate-y-3", "pointer-events-none");
+          fabBtn.classList.remove("opacity-100", "translate-y-0", "pointer-events-auto");
+        }
+      }
+
+      // 计算当前阅读到的标题
+      if (headingEls.length === 0) return;
+
+      const topOffset = 130;
+      let activeSlug = "";
+
+      for (let i = 0; i < headingEls.length; i++) {
+        const el = headingEls[i];
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= topOffset) {
+          activeSlug = el.id;
+        } else {
+          break;
+        }
+      }
+
+      if (!activeSlug && headingEls.length > 0) {
+        activeSlug = headingEls[0].id;
+      }
+
+      // 桌面端高亮
+      let targetDesktopLink: HTMLAnchorElement | null = null;
+      tocLinks.forEach((link) => {
+        const slug = link.getAttribute("data-slug");
+        if (slug === activeSlug) {
+          targetDesktopLink = link;
+        }
+      });
+
+      if (targetDesktopLink && targetDesktopLink.classList.contains("toc-sub-item") && !isExpanded) {
+        let prev = targetDesktopLink.previousElementSibling as HTMLAnchorElement | null;
+        while (prev) {
+          if (prev.classList.contains("toc-item-h2")) {
+            targetDesktopLink = prev;
+            break;
+          }
+          prev = prev.previousElementSibling as HTMLAnchorElement | null;
+        }
+      }
+
+      tocLinks.forEach((link) => {
+        if (link === targetDesktopLink) {
+          link.classList.remove("border-transparent", "text-neutral-600", "text-neutral-400");
+          link.classList.add("border-neutral-900", "text-neutral-950", "font-medium");
+        } else {
+          link.classList.remove("border-neutral-900", "text-neutral-950", "font-medium");
+          link.classList.add("border-transparent");
+          if (link.classList.contains("toc-item-h2")) {
+            link.classList.add("text-neutral-600");
+          } else {
+            link.classList.add("text-neutral-400");
+          }
+        }
+      });
+
+      // 移动端卡片高亮
+      mobileTocLinks.forEach((link) => {
+        const slug = link.getAttribute("data-slug");
+        if (slug === activeSlug) {
+          link.classList.add("text-neutral-950", "font-semibold");
+          link.classList.remove("text-neutral-500", "text-neutral-400");
+        } else {
+          link.classList.remove("text-neutral-950", "font-semibold");
+        }
+      });
+
+      // 移动端抽屉内高亮
+      mobileDrawerLinks.forEach((link) => {
+        const slug = link.getAttribute("data-slug");
+        if (slug === activeSlug) {
+          link.classList.add("text-neutral-950", "font-semibold", "bg-neutral-100", "rounded", "px-1.5");
+          link.classList.remove("text-neutral-500", "text-neutral-400");
+        } else {
+          link.classList.remove("text-neutral-950", "font-semibold", "bg-neutral-100", "rounded", "px-1.5");
+        }
+      });
+    }
+
+    window.addEventListener("scroll", updateScrollspy, { passive: true });
+    updateScrollspy();
+  }
+
+  initTOC();
+  document.addEventListener("astro:page-load", initTOC);
+</script>

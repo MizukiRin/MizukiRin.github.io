@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import TableOfContents from "../../components/TableOfContents.astro";
 import { formatDate } from "../../utils/date";
 
 // 获取所有文章，生成动态路由
@@ -24,7 +25,8 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content } = await render(post);
+const { Content, headings = [] } = await render(post);
+const tocHeadings = (headings || []).filter((h) => h.depth >= 2 && h.depth <= 4);
 
 // Calculate dynamic reading time (assuming ~400 Chinese characters/English words per minute)
 const cleanBody = (post.body || '').replace(/\s+/g, '');
@@ -32,50 +34,90 @@ const readingTime = Math.max(1, Math.round(cleanBody.length / 350));
 ---
 
 <BaseLayout title={`${post.data.title} | Mizuki`}>
-    <!-- Main Content -->
-    <main class="flex-grow max-w-3xl mx-auto px-6 py-8 w-full animate-fade-in">
-        
-        <!-- 返回上级 -->
-        <div class="mb-10">
-            <a href="/blog" class="inline-flex items-center space-x-2 text-sm font-mono text-neutral-400 hover:text-neutral-900 transition-colors group">
-                <i class="ph ph-arrow-left transition-transform group-hover:-translate-x-1"></i>
-                <span>cd ../notes</span>
-            </a>
+    <!-- Main Content (不添加含有 transform 的 animation 类，防止 fixed 元素被截获) -->
+    <main class={`flex-grow mx-auto px-6 py-8 w-full ${tocHeadings.length > 0 ? "max-w-6xl" : "max-w-3xl"}`}>
+        <div class={`relative ${tocHeadings.length > 0 ? "xl:grid xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-14" : ""}`}>
+            <!-- Left Sticky Sidebar (Desktop) -->
+            {tocHeadings.length > 0 && (
+                <aside class="hidden xl:block">
+                    <div class="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2 space-y-8">
+                        <!-- 返回上级 -->
+                        <div>
+                            <a href="/blog" class="inline-flex items-center space-x-2 text-sm font-mono text-neutral-400 hover:text-neutral-900 transition-colors group">
+                                <i class="ph ph-arrow-left transition-transform group-hover:-translate-x-1"></i>
+                                <span>cd ../notes</span>
+                            </a>
+                        </div>
+
+                        <!-- 目录树组件 (桌面端) -->
+                        <TableOfContents headings={headings} />
+                    </div>
+                </aside>
+            )}
+
+            <!-- Right: Article Column -->
+            <div class={`w-full ${tocHeadings.length > 0 ? "max-w-3xl" : ""}`}>
+                <!-- 返回上级 (移动端或无目录时显示在正文上方) -->
+                <div class={`mb-10 ${tocHeadings.length > 0 ? "xl:hidden" : ""}`}>
+                    <a href="/blog" class="inline-flex items-center space-x-2 text-sm font-mono text-neutral-400 hover:text-neutral-900 transition-colors group">
+                        <i class="ph ph-arrow-left transition-transform group-hover:-translate-x-1"></i>
+                        <span>cd ../notes</span>
+                    </a>
+                </div>
+
+                <!-- 文章头部元数据 -->
+                <header class="mb-10">
+                    <h1 class="text-3xl font-medium tracking-tight text-neutral-900 mb-4 leading-snug">
+                        {post.data.title}
+                    </h1>
+                    <div class="flex flex-wrap items-center gap-4 text-sm font-mono text-neutral-500 border-b border-neutral-200 pb-6">
+                        <time datetime={formatDate(post.data.date)} class="flex items-center gap-1.5">
+                            <i class="ph ph-calendar-blank"></i> {formatDate(post.data.date)}
+                        </time>
+                        <div class="flex items-center gap-1.5">
+                            <i class="ph ph-folder"></i> {post.category}
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <i class="ph ph-clock"></i> {readingTime} min read
+                        </div>
+                    </div>
+                </header>
+
+                <!-- 移动端正文顶部折叠卡片 (仅移动端且有标题时显示) -->
+                {tocHeadings.length > 0 && (
+                    <TableOfContents headings={headings} isMobile={true} />
+                )}
+
+                <!-- Markdown 渲染内容区 (.prose) -->
+                <article class="prose w-full">
+                    <Content />
+                </article>
+
+                <!-- 底部导航标签 -->
+                {post.data.tags && post.data.tags.length > 0 && (
+                    <div class="mt-16 pt-8 border-t border-neutral-200 flex flex-wrap gap-2">
+                        {post.data.tags.map((tag: string) => (
+                            <span class="px-2 py-1 bg-neutral-100 text-neutral-600 text-xs font-mono rounded border border-neutral-200">
+                                # {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
-
-        <!-- 文章头部元数据 -->
-        <header class="mb-12">
-            <h1 class="text-3xl font-medium tracking-tight text-neutral-900 mb-4 leading-snug">
-                {post.data.title}
-            </h1>
-            <div class="flex flex-wrap items-center gap-4 text-sm font-mono text-neutral-500 border-b border-neutral-200 pb-6">
-                <time datetime={formatDate(post.data.date)} class="flex items-center gap-1.5">
-                    <i class="ph ph-calendar-blank"></i> {formatDate(post.data.date)}
-                </time>
-                <div class="flex items-center gap-1.5">
-                    <i class="ph ph-folder"></i> {post.category}
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <i class="ph ph-clock"></i> {readingTime} min read
-                </div>
-            </div>
-        </header>
-
-        <!-- Markdown 渲染内容区 (.prose) -->
-        <article class="prose w-full">
-            <Content />
-        </article>
-
-        <!-- 底部导航标签 -->
-        {post.data.tags && post.data.tags.length > 0 && (
-            <div class="mt-16 pt-8 border-t border-neutral-200 flex flex-wrap gap-2">
-                {post.data.tags.map((tag: string) => (
-                    <span class="px-2 py-1 bg-neutral-100 text-neutral-600 text-xs font-mono rounded border border-neutral-200">
-                        # {tag}
-                    </span>
-                ))}
-            </div>
-        )}
     </main>
+
+    <!-- 移动端右下角悬浮按钮与滑出大纲抽屉 (挂在最外层，确保 position: fixed 严格基于手机视口) -->
+    {tocHeadings.length > 0 && (
+        <TableOfContents headings={headings} isMobileDrawer={true} />
+    )}
 </BaseLayout>
 
+<style is:global>
+    /* 优化正文标题锚点跳转时的顶部留白，防止被顶部遮挡 */
+    .prose h2,
+    .prose h3,
+    .prose h4 {
+        scroll-margin-top: 5.5rem;
+    }
+</style>
