@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { formatDate } from "../../utils/date";
 import DailyFeed from "../../components/DailyFeed.astro";
+import ReadingsFeed from "../../components/ReadingsFeed.astro";
 
 const filterDrafts = ({ data }: any) => !data.draft;
 
@@ -77,6 +78,10 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
                         class="tab-btn whitespace-nowrap pb-2 border-b-2 border-transparent text-neutral-400 hover:text-neutral-900 transition-colors"
                         data-target="daily"
                     >Daily Notes</button>
+                    <button
+                        class="tab-btn whitespace-nowrap pb-2 border-b-2 border-transparent text-neutral-400 hover:text-neutral-900 transition-colors"
+                        data-target="readings"
+                    >Readings</button>
                     <!-- Dev Diary tab is temporarily hidden until GitHub Repo waterfall cards feature is implemented -->
                     <!--
                     <button
@@ -159,6 +164,11 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
                     <DailyFeed archivePosts={sortedDailyPosts} />
                 </div>
 
+                <!-- Readings (Tech Digest) Content -->
+                <div id="readings" class="tab-content space-y-4 hidden">
+                    <ReadingsFeed />
+                </div>
+
                 <!-- Dev Diary Content -->
                 <div id="diary" class="tab-content space-y-2 hidden">
                     {sortedDiaryPosts.length > 0 ? (
@@ -214,7 +224,7 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
             const activeTabContent =
                 document.querySelector(".tab-content.block");
 
-            if (!activeTabContent || activeTabContent.id === "daily") {
+            if (!activeTabContent || activeTabContent.id === "daily" || activeTabContent.id === "readings") {
                 if (emptyState) emptyState.classList.add("hidden");
                 return;
             }
@@ -312,7 +322,7 @@ const hasAnyPosts = techPosts.length > 0 || dailyPosts.length > 0 || diaryPosts.
         
         // 如果 URL 显式指定了 ?tab=...，优先使用；如果直接访问 /blog，默认显示 Tech Blog（清空上次留在 sessionStorage 的 daily）
         let activeTab = "tech";
-        if (queryTab && ["tech", "daily", "diary"].includes(queryTab)) {
+        if (queryTab && ["tech", "daily", "readings", "diary"].includes(queryTab)) {
             activeTab = queryTab;
             // 清除 URL 中的 ?tab= 参数保持地址栏干净
             const cleanUrl = window.location.pathname + window.location.hash;

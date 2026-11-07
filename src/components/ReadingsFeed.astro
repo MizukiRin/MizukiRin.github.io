@@ -1,0 +1,907 @@
+---
+// src/components/ReadingsFeed.astro
+// 精读/企业博客书签 (Readings) 组件
+// 包含与 Daily Notes 完全一致的 GitHub 登录/登出面板与博主身份鉴权
+// 支持结构化卡片渲染 (原文直达、复制URL、Notes横线区、标签分类)、手机端轻量快速发布、标签过滤与删除
+---
+
+<div id="readings-feed-container" class="space-y-6">
+  <!-- 顶部状态栏与操作栏 -->
+  <div class="flex flex-wrap items-center justify-between gap-y-2 border-b border-neutral-100 pb-3">
+    <div class="flex items-center space-x-2">
+      <span class="text-xs font-mono uppercase tracking-wider text-neutral-400">Readings</span>
+      <span id="readings-count-badge" class="hidden text-[11px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">0</span>
+    </div>
+
+    <!-- 用户身份与登录状态 (与 Daily Notes 视觉与逻辑完全一致) -->
+    <div id="readings-auth-section" class="flex items-center space-x-2.5 text-xs font-mono">
+      <!-- 未登录状态：简约的 GitHub 登录按钮 -->
+      <button
+        id="readings-github-login-btn"
+        class="inline-flex items-center space-x-1.5 text-neutral-500 hover:text-neutral-900 border border-neutral-200 hover:border-neutral-400 bg-white px-2.5 py-1 rounded transition-all shadow-xs cursor-pointer"
+        title="使用 GitHub 登录以添加精读"
+      >
+        <i class="ph ph-github-logo text-sm"></i>
+        <span>GitHub 登录</span>
+      </button>
+
+      <!-- 已登录状态 (默认隐藏，登录后显示作者信息与添加/退出按钮) -->
+      <div id="readings-user-panel" class="hidden items-center space-x-2 sm:space-x-3">
+        <div class="flex items-center space-x-1.5">
+          <img id="readings-user-avatar" src="" alt="avatar" class="w-5 h-5 rounded-full border border-neutral-200" />
+          <span id="readings-user-name" class="text-neutral-800 font-medium max-w-[80px] sm:max-w-none truncate"></span>
+        </div>
+
+        <!-- 添加精读按钮：移动端纯方形小胶囊图标且居中，桌面端带文字 -->
+        <button
+          id="readings-toggle-compose-btn"
+          class="hidden w-7 h-7 sm:w-auto sm:h-auto flex items-center justify-center sm:space-x-1 bg-neutral-900 hover:bg-neutral-800 text-white rounded sm:px-2.5 sm:py-1 transition-colors shadow-xs cursor-pointer whitespace-nowrap select-none"
+          title="添加精读"
+        >
+          <i class="ph ph-plus text-sm flex items-center justify-center"></i>
+          <span class="hidden sm:inline">添加精读</span>
+        </button>
+
+        <!-- 退出登录按钮 -->
+        <button
+          id="readings-logout-btn"
+          class="w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-red-600 rounded hover:bg-neutral-100 transition-colors cursor-pointer"
+          title="退出登录"
+        >
+          <i class="ph ph-sign-out text-sm"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 轻量发布表单 (仅博主登录展开) -->
+  <div id="readings-composer" class="hidden bg-white border border-neutral-200 rounded-sm p-4 space-y-3.5 shadow-xs animate-fade-in text-xs font-mono">
+    <div class="flex items-center justify-between pb-1 border-b border-neutral-100">
+      <span class="font-medium text-neutral-800">记录阅读笔记</span>
+      <span class="text-[11px] text-neutral-400">支持手机快速粘贴 URL 与要点思考</span>
+    </div>
+
+    <!-- 1. 原文链接 (必填) -->
+    <div class="space-y-1">
+      <label for="readings-input-url" class="block text-[11px] text-neutral-500">原文链接 (URL) *</label>
+      <div class="relative">
+        <i class="ph ph-link absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+        <input
+          id="readings-input-url"
+          type="url"
+          placeholder="https://eng.uber.com/... 或 https://blog.cloudflare.com/..."
+          class="w-full bg-neutral-50/60 border border-neutral-200 rounded px-2.5 py-1.5 pl-8 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors font-mono"
+        />
+      </div>
+    </div>
+
+    <!-- 2. 原文标题与来源机构 -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+      <div class="sm:col-span-2 space-y-1">
+        <label for="readings-input-title" class="block text-[11px] text-neutral-500">阅读的文章原标题 *</label>
+        <input
+          id="readings-input-title"
+          type="text"
+          placeholder="例如：How Uber Scaled Its Distributed Storage to Thousands of Nodes"
+          class="w-full bg-neutral-50/60 border border-neutral-200 rounded px-2.5 py-1.5 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors font-sans"
+        />
+      </div>
+      <div class="space-y-1">
+        <label for="readings-input-source" class="block text-[11px] text-neutral-500">来源 / 企业机构</label>
+        <input
+          id="readings-input-source"
+          type="text"
+          placeholder="如 Uber, OpenAI, Stripe"
+          class="w-full bg-neutral-50/60 border border-neutral-200 rounded px-2.5 py-1.5 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors font-mono"
+        />
+      </div>
+    </div>
+
+    <!-- 快捷来源小按钮 -->
+    <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-neutral-400">
+      <span>常用:</span>
+      {["Uber", "Cloudflare", "OpenAI", "Anthropic", "Stripe", "Netflix", "Google", "Meta", "Paper"].map((src) => (
+        <button
+          type="button"
+          class="readings-quick-source-btn px-1.5 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-600 transition-colors cursor-pointer select-none"
+          data-source={src}
+        >
+          {src}
+        </button>
+      ))}
+    </div>
+
+    <!-- 3. 核心思考 / 要点笔记 (多行) -->
+    <div class="space-y-1">
+      <label for="readings-input-summary" class="block text-[11px] text-neutral-500">我的精读笔记与思考 (Notes) *</label>
+      <textarea
+        id="readings-input-summary"
+        rows="4"
+        placeholder="记录这篇文章的核心启发、要点、设计权衡...&#10;1. 选主超时增加了自适应抖动设计&#10;2. 增量快照同步降低了 40% 内存峰值"
+        class="w-full bg-neutral-50/60 border border-neutral-200 rounded p-2.5 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors font-sans leading-relaxed resize-y"
+      ></textarea>
+    </div>
+
+    <!-- 4. 标签选择与录入区 (标签胶囊化) -->
+    <div class="space-y-1.5 pt-1">
+      <div class="flex items-center justify-between text-[11px] text-neutral-500">
+        <span>技术标签 (按回车或点添加)</span>
+        <span class="text-[10px] text-neutral-400">可多选</span>
+      </div>
+
+      <!-- 已选标签胶囊预览容器 -->
+      <div id="readings-selected-tags-container" class="flex flex-wrap items-center gap-1.5 min-h-[26px]">
+        <!-- 标签胶囊由 JS 动态生成 -->
+      </div>
+
+      <!-- 标签输入框与添加按钮 -->
+      <div class="flex items-center gap-2">
+        <div class="relative grow">
+          <i class="ph ph-hash absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs"></i>
+          <input
+            id="readings-input-tag"
+            type="text"
+            placeholder="输入标签名，按 Enter 添加 (如 Architecture)"
+            class="w-full bg-neutral-50/60 border border-neutral-200 rounded px-2.5 py-1.5 pl-7 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors font-mono"
+          />
+        </div>
+        <button
+          id="readings-btn-add-tag"
+          type="button"
+          class="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded text-xs transition-colors cursor-pointer select-none shrink-0"
+        >
+          添加标签
+        </button>
+      </div>
+
+      <!-- 快捷标签推荐池 -->
+      <div id="readings-suggested-tags-wrapper" class="hidden flex flex-wrap items-center gap-1 pt-1 text-[10px] text-neutral-400">
+        <span>已有标签:</span>
+        <div id="readings-suggested-tags-list" class="flex flex-wrap items-center gap-1"></div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="flex items-center justify-end space-x-2 pt-2 border-t border-neutral-100">
+      <button
+        id="readings-cancel-compose-btn"
+        type="button"
+        class="px-3 py-1.5 text-neutral-400 hover:text-neutral-800 rounded transition-colors cursor-pointer select-none"
+      >
+        取消
+      </button>
+      <button
+        id="readings-submit-btn"
+        type="button"
+        class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded transition-colors cursor-pointer select-none"
+      >
+        <span id="readings-submit-spinner" class="hidden"><i class="ph ph-spinner animate-spin text-xs"></i></span>
+        <span id="readings-submit-text">发布记录</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 标签筛选栏 (按来源或标签过滤) -->
+  <div id="readings-filter-bar" class="hidden flex flex-wrap items-center gap-1.5 text-xs font-mono">
+    <span class="text-[11px] text-neutral-400 mr-1">Filter:</span>
+    <button
+      id="readings-filter-all-btn"
+      type="button"
+      class="text-[11px] font-mono px-2 py-0.5 rounded bg-neutral-900 text-white border border-neutral-900 cursor-pointer select-none transition-colors"
+    >
+      All
+    </button>
+    <div id="readings-filter-list" class="flex flex-wrap items-center gap-1.5">
+      <!-- 动态注入标签过滤胶囊 -->
+    </div>
+  </div>
+
+  <!-- 骨架屏加载状态 -->
+  <div id="readings-skeleton" class="space-y-4">
+    {[1, 2, 3].map(() => (
+      <div class="border border-neutral-200/80 rounded-sm p-4 space-y-3 bg-white/60 animate-pulse">
+        <div class="flex justify-between items-center">
+          <div class="h-4 bg-neutral-200 rounded w-28"></div>
+          <div class="h-3 bg-neutral-100 rounded w-16"></div>
+        </div>
+        <div class="h-5 bg-neutral-200 rounded w-3/4"></div>
+        <div class="space-y-1.5">
+          <div class="h-3.5 bg-neutral-100 rounded w-full"></div>
+          <div class="h-3.5 bg-neutral-100 rounded w-5/6"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <!-- 动态列表卡片流容器 -->
+  <div id="readings-list-container" class="space-y-4">
+    <!-- JS 动态渲染卡片 -->
+  </div>
+
+  <!-- 空状态提示 -->
+  <div id="readings-empty-state" class="hidden text-center py-16 text-neutral-400 font-mono text-xs space-y-2">
+    <i class="ph ph-book-open text-3xl mb-1 block text-neutral-300"></i>
+    <p>No reading notes yet.</p>
+    <div id="readings-setup-tip" class="hidden text-[11px] text-neutral-400 pt-2 max-w-md mx-auto text-left bg-neutral-50 p-3 rounded border border-neutral-200">
+      <span class="font-medium text-neutral-700 block mb-1">💡 首次使用提示：</span>
+      请在 Supabase SQL Editor 中执行项目根目录下的 <code class="bg-neutral-200 px-1 rounded">supabase_readings_schema.sql</code> 即可快速初始化数据库表。
+    </div>
+  </div>
+
+  <!-- 分页加载更多 -->
+  <div id="readings-pagination" class="hidden text-center pt-2">
+    <button
+      id="readings-load-more-btn"
+      type="button"
+      class="inline-flex items-center space-x-1.5 text-xs font-mono text-neutral-500 hover:text-neutral-900 border border-neutral-200 hover:border-neutral-400 bg-white px-3.5 py-1.5 rounded transition-all shadow-2xs cursor-pointer select-none"
+    >
+      <i id="readings-load-more-icon" class="ph ph-arrow-down text-xs"></i>
+      <span id="readings-load-more-text">加载更多记录</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  import { supabase, AUTHOR_GITHUB } from "../utils/supabase";
+
+  interface ReadingItem {
+    id: string;
+    title: string;
+    url: string;
+    source?: string;
+    summary: string;
+    tags?: string[];
+    author_github: string;
+    created_at: string;
+  }
+
+  // 状态栏与身份面板 DOM 元素引用
+  const countBadge = document.getElementById("readings-count-badge");
+  const loginBtn = document.getElementById("readings-github-login-btn");
+  const userPanel = document.getElementById("readings-user-panel");
+  const userAvatar = document.getElementById("readings-user-avatar") as HTMLImageElement | null;
+  const userName = document.getElementById("readings-user-name");
+  const logoutBtn = document.getElementById("readings-logout-btn");
+  const toggleComposeBtn = document.getElementById("readings-toggle-compose-btn");
+
+  const composer = document.getElementById("readings-composer");
+  const cancelComposeBtn = document.getElementById("readings-cancel-compose-btn");
+  const submitBtn = document.getElementById("readings-submit-btn");
+  const submitText = document.getElementById("readings-submit-text");
+  const submitSpinner = document.getElementById("readings-submit-spinner");
+
+  const inputUrl = document.getElementById("readings-input-url") as HTMLInputElement | null;
+  const inputTitle = document.getElementById("readings-input-title") as HTMLInputElement | null;
+  const inputSource = document.getElementById("readings-input-source") as HTMLInputElement | null;
+  const inputSummary = document.getElementById("readings-input-summary") as HTMLTextAreaElement | null;
+  const quickSourceBtns = document.querySelectorAll(".readings-quick-source-btn");
+
+  // 标签选择与录入 DOM
+  const inputTag = document.getElementById("readings-input-tag") as HTMLInputElement | null;
+  const btnAddTag = document.getElementById("readings-btn-add-tag");
+  const selectedTagsContainer = document.getElementById("readings-selected-tags-container");
+  const suggestedTagsWrapper = document.getElementById("readings-suggested-tags-wrapper");
+  const suggestedTagsList = document.getElementById("readings-suggested-tags-list");
+
+  let draftTags: string[] = [];
+
+  const filterBar = document.getElementById("readings-filter-bar");
+  const filterAllBtn = document.getElementById("readings-filter-all-btn");
+  const filterList = document.getElementById("readings-filter-list");
+
+  const skeleton = document.getElementById("readings-skeleton");
+  const listContainer = document.getElementById("readings-list-container");
+  const emptyState = document.getElementById("readings-empty-state");
+  const setupTip = document.getElementById("readings-setup-tip");
+  const pagination = document.getElementById("readings-pagination");
+  const loadMoreBtn = document.getElementById("readings-load-more-btn") as HTMLButtonElement | null;
+  const loadMoreText = document.getElementById("readings-load-more-text");
+  const loadMoreIcon = document.getElementById("readings-load-more-icon");
+
+  const PAGE_SIZE = 10;
+  let currentPage = 0;
+  let totalCount = 0;
+  let hasMore = false;
+  let isLoading = false;
+  let currentTagFilter: string | null = null;
+  let allTagsSet = new Set<string>();
+
+  let currentUser: any = null;
+  let isAuthor = false;
+
+  // 渲染表单内已选标签胶囊
+  function renderDraftTags() {
+    if (!selectedTagsContainer) return;
+    selectedTagsContainer.innerHTML = "";
+    if (draftTags.length === 0) {
+      selectedTagsContainer.innerHTML = `<span class="text-[11px] text-neutral-300 select-none">暂未添加标签</span>`;
+      return;
+    }
+    draftTags.forEach((tag) => {
+      const chip = document.createElement("span");
+      chip.className = "inline-flex items-center gap-1 text-[11px] font-mono bg-neutral-100 text-neutral-800 px-2 py-0.5 rounded border border-neutral-200/80 shadow-2xs select-none";
+      chip.innerHTML = `
+        <span>#${tag}</span>
+        <button type="button" class="text-neutral-400 hover:text-neutral-800 cursor-pointer p-0.5" title="移除标签">
+          <i class="ph ph-x text-[10px]"></i>
+        </button>
+      `;
+      chip.querySelector("button")?.addEventListener("click", () => {
+        draftTags = draftTags.filter((t) => t !== tag);
+        renderDraftTags();
+      });
+      selectedTagsContainer.appendChild(chip);
+    });
+  }
+
+  // 渲染表单下方的推荐标签池
+  function renderSuggestedTags() {
+    if (!suggestedTagsWrapper || !suggestedTagsList) return;
+    const existing = Array.from(allTagsSet).filter((t) => !draftTags.includes(t));
+    if (existing.length === 0) {
+      suggestedTagsWrapper.classList.add("hidden");
+      return;
+    }
+    suggestedTagsWrapper.classList.remove("hidden");
+    suggestedTagsList.innerHTML = "";
+    existing.slice(0, 8).forEach((t) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "px-1.5 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-600 transition-colors cursor-pointer select-none";
+      btn.textContent = `+ #${t}`;
+      btn.addEventListener("click", () => {
+        if (!draftTags.includes(t)) {
+          draftTags.push(t);
+          renderDraftTags();
+          renderSuggestedTags();
+        }
+      });
+      suggestedTagsList.appendChild(btn);
+    });
+  }
+
+  function addTagFromInput() {
+    if (!inputTag) return;
+    const val = inputTag.value.replace(/^#/, "").trim();
+    if (!val) return;
+    if (!draftTags.includes(val)) {
+      draftTags.push(val);
+      renderDraftTags();
+      renderSuggestedTags();
+    }
+    inputTag.value = "";
+    inputTag.focus();
+  }
+
+  btnAddTag?.addEventListener("click", addTagFromInput);
+  inputTag?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTagFromInput();
+    }
+  });
+
+  // 格式化卡片日期
+  function formatReadingDate(dateStr: string): string {
+    try {
+      const d = new Date(dateStr);
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+    } catch {
+      return dateStr;
+    }
+  }
+
+  // 内容换行与链接转义安全渲染
+  function formatSummaryText(text: string): string {
+    const escaped = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    return escaped.replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-neutral-900 underline decoration-neutral-300 hover:decoration-neutral-900 underline-offset-2 break-all">$1</a>'
+    );
+  }
+
+  // 提取 Hostname 兜底显示
+  function getHostname(url: string): string {
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  }
+
+  // 渲染单张卡片
+  function renderReadingCard(item: ReadingItem): HTMLElement {
+    const card = document.createElement("article");
+    card.id = `reading-${item.id}`;
+    card.className = "group border border-neutral-200/90 hover:border-neutral-400 bg-white rounded-sm p-4 sm:p-5 space-y-3 transition-all hover:shadow-xs";
+
+    const host = getHostname(item.url);
+    const sourceLabel = item.source?.trim() || host || "External Article";
+    const tags = (item.tags || []).filter((t) => Boolean(t.trim()));
+
+    card.innerHTML = `
+      <!-- 卡片头部: 来源标识 + 日期 + 复制链接 + 博主删除操作 -->
+      <div class="flex items-center justify-between text-xs font-mono pb-1 border-b border-neutral-100 gap-2">
+        <div class="flex items-center space-x-2 truncate min-w-0">
+          <span class="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-neutral-100 text-neutral-800 rounded font-medium text-[11px] truncate">
+            <i class="ph ph-buildings text-[11px] text-neutral-500 shrink-0"></i>
+            <span class="truncate">${sourceLabel}</span>
+          </span>
+          <span class="text-neutral-300">·</span>
+          <time class="text-neutral-400 text-[11px] shrink-0">${formatReadingDate(item.created_at)}</time>
+        </div>
+
+        <div class="flex items-center space-x-1.5 shrink-0">
+          <!-- 复制 URL 按钮 (轻量不显眼) -->
+          <button
+            type="button"
+            class="btn-copy-url text-neutral-400 hover:text-neutral-800 p-1 rounded hover:bg-neutral-100 cursor-pointer transition-colors flex items-center justify-center"
+            title="复制原文链接"
+            data-url="${item.url}"
+          >
+            <i class="ph ph-copy text-xs"></i>
+          </button>
+
+          ${
+            isAuthor
+              ? `<button type="button" class="btn-del-reading text-neutral-350 hover:text-red-600 p-1 rounded hover:bg-neutral-100 cursor-pointer transition-colors" title="删除此条记录">
+                  <i class="ph ph-trash text-xs"></i>
+                 </button>`
+              : ""
+          }
+        </div>
+      </div>
+
+      <!-- 阅读的文章原标题 (单点跳转原文) -->
+      <div>
+        <h3 class="text-base font-medium text-neutral-900 leading-snug">
+          <a
+            href="${item.url}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group-hover:text-neutral-900 hover:underline decoration-neutral-300 underline-offset-4 inline-flex items-baseline gap-1"
+            title="新窗口打开原文"
+          >
+            <span>${item.title}</span>
+            <i class="ph ph-arrow-up-right text-xs text-neutral-400 group-hover:text-neutral-900 transition-colors shrink-0"></i>
+          </a>
+        </h3>
+      </div>
+
+      <!-- 文章标题下方的横线分割线与 Notes 区域 -->
+      <div class="border-t border-neutral-200 pt-3 space-y-2">
+        <!-- Notes 标题 (小一号 text-xs、font-light 细体、浅灰) -->
+        <div class="text-xs font-light text-neutral-400 font-mono tracking-wide select-none">
+          Notes
+        </div>
+
+        <!-- 总结正文 (无边框/底色，自然段落排版) -->
+        <div class="text-xs sm:text-[13px] text-neutral-700 leading-relaxed font-sans whitespace-pre-wrap break-words">
+          ${formatSummaryText(item.summary)}
+        </div>
+      </div>
+
+      <!-- 标签池 -->
+      ${
+        tags.length > 0
+          ? `<div class="flex flex-wrap items-center gap-1.5 pt-1">
+              ${tags
+                .map((t) => {
+                  const clean = t.replace(/^#/, "").trim();
+                  const isActive = currentTagFilter === clean;
+                  return `<button
+                    type="button"
+                    class="reading-tag-btn text-[11px] font-mono px-1.5 py-0.5 rounded cursor-pointer transition-colors select-none ${
+                      isActive
+                        ? "bg-neutral-900 text-white border border-neutral-900"
+                        : "bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 border border-neutral-200/60"
+                    }"
+                    data-tag="${clean}"
+                  >#${clean}</button>`;
+                })
+                .join("")}
+            </div>`
+          : ""
+      }
+    `;
+
+    // 绑定复制 URL 逻辑
+    const copyBtn = card.querySelector(".btn-copy-url");
+    copyBtn?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(item.url);
+        copyBtn.innerHTML = '<i class="ph ph-check text-xs text-neutral-900"></i>';
+        setTimeout(() => {
+          copyBtn.innerHTML = '<i class="ph ph-copy text-xs"></i>';
+        }, 1500);
+      } catch (err) {
+        console.error("复制失败:", err);
+      }
+    });
+
+    // 绑定删除按钮
+    if (isAuthor) {
+      const delBtn = card.querySelector(".btn-del-reading");
+      delBtn?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (confirm("确定要彻底删除这条精读记录吗？")) {
+          await handleDeleteReading(item.id);
+        }
+      });
+    }
+
+    // 绑定标签筛选点击
+    card.querySelectorAll(".reading-tag-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const tag = btn.getAttribute("data-tag");
+        if (tag) {
+          setReadingTagFilter(currentTagFilter === tag ? null : tag);
+        }
+      });
+    });
+
+    return card;
+  }
+
+  // 加载列表数据
+  async function loadReadings(page = 0, isAppend = false) {
+    if (isLoading) return;
+    isLoading = true;
+
+    if (!isAppend) {
+      currentPage = 0;
+      skeleton?.classList.remove("hidden");
+      if (listContainer) listContainer.innerHTML = "";
+      emptyState?.classList.add("hidden");
+      pagination?.classList.add("hidden");
+    }
+
+    try {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      let query = supabase
+        .from("daily_readings")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (currentTagFilter) {
+        query = query.contains("tags", [currentTagFilter]);
+      }
+
+      const { data, count, error } = await query.range(from, to);
+
+      skeleton?.classList.add("hidden");
+
+      if (error) {
+        if (error.code === "42P01" || error.message?.includes("does not exist")) {
+          setupTip?.classList.remove("hidden");
+        }
+        emptyState?.classList.remove("hidden");
+        return;
+      }
+
+      totalCount = count || 0;
+      if (countBadge) {
+        countBadge.textContent = String(totalCount);
+        countBadge.classList.toggle("hidden", totalCount === 0);
+      }
+
+      const items: ReadingItem[] = data || [];
+
+      // 提取标签池
+      items.forEach((it) => {
+        (it.tags || []).forEach((t) => allTagsSet.add(t.replace(/^#/, "").trim()));
+      });
+      renderFilterBar();
+      renderSuggestedTags();
+
+      if (!isAppend && items.length === 0) {
+        emptyState?.classList.remove("hidden");
+        return;
+      }
+
+      if (listContainer) {
+        items.forEach((item) => {
+          listContainer.appendChild(renderReadingCard(item));
+        });
+      }
+
+      hasMore = (page + 1) * PAGE_SIZE < totalCount && items.length > 0;
+      currentPage = page;
+
+      if (pagination) {
+        pagination.classList.toggle("hidden", !hasMore);
+      }
+    } catch (err) {
+      console.error("加载 Readings 失败:", err);
+      skeleton?.classList.add("hidden");
+      emptyState?.classList.remove("hidden");
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  // 渲染筛选栏
+  function renderFilterBar() {
+    if (!filterBar || !filterList) return;
+    const tagsArr = Array.from(allTagsSet).filter(Boolean);
+    if (tagsArr.length === 0) {
+      filterBar.classList.add("hidden");
+      return;
+    }
+
+    filterBar.classList.remove("hidden");
+    filterList.innerHTML = "";
+
+    // 活跃态更新
+    if (filterAllBtn) {
+      if (!currentTagFilter) {
+        filterAllBtn.className = "text-[11px] font-mono px-2 py-0.5 rounded bg-neutral-900 text-white border border-neutral-900 cursor-pointer select-none transition-colors";
+      } else {
+        filterAllBtn.className = "text-[11px] font-mono px-2 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-600 border border-transparent cursor-pointer select-none transition-colors";
+      }
+    }
+
+    tagsArr.forEach((tag) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const isActive = currentTagFilter === tag;
+      btn.className = `text-[11px] font-mono px-2 py-0.5 rounded cursor-pointer select-none transition-colors ${
+        isActive
+          ? "bg-neutral-900 text-white border border-neutral-900"
+          : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 border border-transparent"
+      }`;
+      btn.textContent = `#${tag}`;
+      btn.addEventListener("click", () => {
+        setReadingTagFilter(isActive ? null : tag);
+      });
+      filterList.appendChild(btn);
+    });
+  }
+
+  function setReadingTagFilter(tag: string | null) {
+    currentTagFilter = tag;
+    renderFilterBar();
+    loadReadings(0, false);
+  }
+
+  // 提交发布新记录
+  async function handleAddReading() {
+    if (!isAuthor || !currentUser) {
+      alert("仅博主可添加精读记录。");
+      return;
+    }
+
+    const url = inputUrl?.value.trim();
+    const title = inputTitle?.value.trim();
+    const source = inputSource?.value.trim();
+    const summary = inputSummary?.value.trim();
+
+    if (!url) {
+      alert("请填写原文链接 (URL)");
+      inputUrl?.focus();
+      return;
+    }
+
+    if (!title) {
+      alert("请填写阅读的文章原标题");
+      inputTitle?.focus();
+      return;
+    }
+
+    if (!summary) {
+      alert("请填写笔记与思考内容 (Notes)");
+      inputSummary?.focus();
+      return;
+    }
+
+    if (submitBtn) submitBtn.setAttribute("disabled", "true");
+    submitSpinner?.classList.remove("hidden");
+    if (submitText) submitText.textContent = "发布中...";
+
+    try {
+      const ghUsername = currentUser.user_metadata?.user_name || AUTHOR_GITHUB;
+      const { error } = await supabase.from("daily_readings").insert([
+        {
+          title,
+          url,
+          source: source || getHostname(url),
+          summary,
+          tags: draftTags,
+          author_github: ghUsername,
+        },
+      ]);
+
+      if (error) throw error;
+
+      // 清空表单并收起
+      if (inputUrl) inputUrl.value = "";
+      if (inputTitle) inputTitle.value = "";
+      if (inputSource) inputSource.value = "";
+      if (inputSummary) inputSummary.value = "";
+      if (inputTag) inputTag.value = "";
+      draftTags = [];
+      renderDraftTags();
+      composer?.classList.add("hidden");
+
+      // 重新加载并更新列表
+      await loadReadings(0, false);
+    } catch (err: any) {
+      console.error("发布精读失败:", err);
+      alert(`发布失败: ${err.message || "请检查网络或 Supabase 表结构"}`);
+    } finally {
+      if (submitBtn) submitBtn.removeAttribute("disabled");
+      submitSpinner?.classList.add("hidden");
+      if (submitText) submitText.textContent = "发布记录";
+    }
+  }
+
+  // 删除某条记录
+  async function handleDeleteReading(id: string) {
+    try {
+      const { error } = await supabase.from("daily_readings").delete().eq("id", id);
+      if (error) throw error;
+
+      const card = document.getElementById(`reading-${id}`);
+      if (card) {
+        card.style.opacity = "0";
+        card.style.transform = "scale(0.97)";
+        setTimeout(() => {
+          card.remove();
+          totalCount = Math.max(0, totalCount - 1);
+          if (countBadge) {
+            countBadge.textContent = String(totalCount);
+            countBadge.classList.toggle("hidden", totalCount === 0);
+          }
+          if (listContainer && listContainer.children.length === 0) {
+            emptyState?.classList.remove("hidden");
+          }
+        }, 200);
+      }
+    } catch (err: any) {
+      console.error("删除失败:", err);
+      alert(`删除失败: ${err.message || "网络异常"}`);
+    }
+  }
+
+  // 处理认证状态更新 (与 DailyFeed 保持完全一致)
+  function handleAuthState(user: any) {
+    currentUser = user;
+    if (user) {
+      const ghUsername = user.user_metadata?.user_name || user.email?.split("@")[0] || "";
+      isAuthor = ghUsername.toLowerCase() === AUTHOR_GITHUB.toLowerCase();
+
+      // 隐藏登录按钮
+      if (loginBtn) {
+        loginBtn.style.display = "none";
+        loginBtn.classList.add("hidden");
+        loginBtn.classList.remove("inline-flex");
+      }
+
+      // 显示用户面板
+      if (userPanel) {
+        userPanel.style.display = "flex";
+        userPanel.classList.remove("hidden");
+        userPanel.classList.add("flex");
+      }
+
+      if (userAvatar) userAvatar.src = user.user_metadata?.avatar_url || `https://avatars.githubusercontent.com/${ghUsername}`;
+      if (userName) userName.textContent = `@${ghUsername}`;
+
+      if (isAuthor) {
+        if (toggleComposeBtn) {
+          toggleComposeBtn.style.display = "inline-flex";
+          toggleComposeBtn.classList.remove("hidden");
+          toggleComposeBtn.classList.add("inline-flex");
+        }
+      } else {
+        if (toggleComposeBtn) {
+          toggleComposeBtn.style.display = "none";
+          toggleComposeBtn.classList.add("hidden");
+        }
+      }
+    } else {
+      isAuthor = false;
+
+      // 恢复显示登录按钮
+      if (loginBtn) {
+        loginBtn.style.display = "inline-flex";
+        loginBtn.classList.remove("hidden");
+        loginBtn.classList.add("inline-flex");
+      }
+
+      // 隐藏用户面板与发帖框
+      if (userPanel) {
+        userPanel.style.display = "none";
+        userPanel.classList.add("hidden");
+        userPanel.classList.remove("flex");
+      }
+
+      if (toggleComposeBtn) {
+        toggleComposeBtn.style.display = "none";
+        toggleComposeBtn.classList.add("hidden");
+      }
+      composer?.classList.add("hidden");
+    }
+
+    // 重新渲染列表以同步作者删除按钮权限
+    loadReadings(0, false);
+  }
+
+  // 事件监听绑定
+  loginBtn?.addEventListener("click", async () => {
+    try {
+      sessionStorage.setItem("active_blog_tab", "readings");
+      const cleanRedirectUrl = `${window.location.origin}${window.location.pathname}?tab=readings`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: cleanRedirectUrl,
+        },
+      });
+      if (error) {
+        console.error("GitHub 登录失败:", error);
+        alert("登录失败: " + error.message);
+      }
+    } catch (err: any) {
+      console.error("登录异常:", err);
+      alert("登录异常: " + (err.message || err));
+    }
+  });
+
+  logoutBtn?.addEventListener("click", async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("退出异常:", e);
+    }
+    window.history.replaceState({}, document.title, window.location.pathname);
+    window.location.reload();
+  });
+
+  toggleComposeBtn?.addEventListener("click", () => {
+    composer?.classList.toggle("hidden");
+    if (composer && !composer.classList.contains("hidden")) {
+      inputUrl?.focus();
+      renderDraftTags();
+      renderSuggestedTags();
+    }
+  });
+
+  cancelComposeBtn?.addEventListener("click", () => {
+    composer?.classList.add("hidden");
+  });
+
+  submitBtn?.addEventListener("click", handleAddReading);
+
+  quickSourceBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const src = btn.getAttribute("data-source");
+      if (inputSource && src) {
+        inputSource.value = src;
+      }
+    });
+  });
+
+  filterAllBtn?.addEventListener("click", () => {
+    setReadingTagFilter(null);
+  });
+
+  loadMoreBtn?.addEventListener("click", () => {
+    if (hasMore && !isLoading) {
+      loadReadings(currentPage + 1, true);
+    }
+  });
+
+  // 认证状态监听（复用 Supabase 会话）
+  supabase.auth.onAuthStateChange((_event, session) => {
+    handleAuthState(session?.user || null);
+  });
+</script>
