@@ -14,7 +14,7 @@ const { archivePosts = [] } = Astro.props;
   <!-- 顶部状态栏与操作栏 -->
   <div class="flex flex-wrap items-center justify-between gap-y-2 border-b border-neutral-100 pb-3">
     <div class="flex items-center space-x-2">
-      <span class="text-xs font-mono uppercase tracking-wider text-neutral-400">Timeline / Memos</span>
+      <span class="text-xs font-mono uppercase tracking-wider text-neutral-400">Memos</span>
       <span id="daily-count-badge" class="hidden text-[11px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">0</span>
     </div>
 
@@ -1409,12 +1409,26 @@ const { archivePosts = [] } = Astro.props;
     const usedSet = new Set<string>();
     tagUsageMap = {};
 
-    // 1. 尝试从专用的 daily_tags 标签表查询已创建的标签
+    // 1. 尝试从专用的 daily_tags 标签表查询已创建的标签 (仅查 type = 'daily' 或默认空)
     try {
-      const { data: tagTableData } = await supabase
-        .from("daily_tags")
-        .select("name")
-        .order("name", { ascending: true });
+      let tagTableData: any = null;
+      try {
+        const res = await supabase
+          .from("daily_tags")
+          .select("name")
+          .or("type.eq.daily,type.is.null")
+          .order("name", { ascending: true });
+        if (!res.error) {
+          tagTableData = res.data;
+        } else {
+          // 如果字段尚未创建，平滑兜底
+          const fallback = await supabase.from("daily_tags").select("name").order("name", { ascending: true });
+          tagTableData = fallback.data;
+        }
+      } catch (err) {
+        const fallback = await supabase.from("daily_tags").select("name").order("name", { ascending: true });
+        tagTableData = fallback.data;
+      }
       if (tagTableData) {
         tagTableData.forEach((row: any) => {
           if (row?.name) {
@@ -1573,13 +1587,17 @@ const { archivePosts = [] } = Astro.props;
     const clean = rawName.replace(/^#/, "").trim();
     if (!clean) return;
 
-    // 存入全站标签库
+    // 存入全站标签库 (仅归类为 daily 标签)
     if (!allTags.includes(clean)) {
       allTags.push(clean);
       allTags.sort((a, b) => a.localeCompare(b, "zh-CN"));
       try {
-        await supabase.from("daily_tags").insert([{ name: clean }]);
-      } catch (e) {}
+        await supabase.from("daily_tags").upsert([{ name: clean, type: "daily" }], { onConflict: "name,type" });
+      } catch (e) {
+        try {
+          await supabase.from("daily_tags").insert([{ name: clean, type: "daily" }]);
+        } catch (err) {}
+      }
     }
 
     if (!selectedComposeTags.includes(clean)) {
@@ -1722,11 +1740,12 @@ const { archivePosts = [] } = Astro.props;
   // 重命名标签（级联更新 daily_tags 表与所有相关动态）
   async function handleRenameTag(oldName: string, newName: string) {
     try {
-      // 1. 更新 daily_tags 表
+      // 1. 更新 daily_tags 表中类型为 daily 的标签
       const { error: tagError } = await supabase
         .from("daily_tags")
         .update({ name: newName })
-        .eq("name", oldName);
+        .eq("name", oldName)
+        .or("type.eq.daily,type.is.null");
       if (tagError) console.warn("更新 daily_tags 表提示:", tagError);
 
       // 2. 查询并级联更新所有包含 oldName 的动态
@@ -1777,11 +1796,12 @@ const { archivePosts = [] } = Astro.props;
     if (!confirmed) return;
 
     try {
-      // 1. 从 daily_tags 表中删除
+      // 1. 从 daily_tags 表中删除 (限定 daily 类型)
       const { error: tagDelErr } = await supabase
         .from("daily_tags")
         .delete()
-        .eq("name", tagName);
+        .eq("name", tagName)
+        .or("type.eq.daily,type.is.null");
       if (tagDelErr) console.warn("从 daily_tags 表删除提示:", tagDelErr);
 
       // 2. 查询并级联从所有动态中移除 tagName
@@ -1823,7 +1843,7 @@ const { archivePosts = [] } = Astro.props;
     }
 
     try {
-      const { error } = await supabase.from("daily_tags").insert([{ name: clean }]);
+      const { error } = await supabase.from("daily_tags").insert([{ name: clean, type: "daily" }]);
       if (error) throw error;
 
       tagManagerNewInput.value = "";
@@ -2164,11 +2184,15 @@ const { archivePosts = [] } = Astro.props;
         throw error;
       }
 
-      // 将本次使用的新标签持久化到 daily_tags 表
+      // 将本次使用的新标签持久化到 daily_tags 表 (标记 type = 'daily')
       if (tags.length > 0) {
         try {
-          const tagRows = tags.map((name) => ({ name }));
-          await supabase.from("daily_tags").upsert(tagRows, { onConflict: "name" });
+          const tagRows = tags.map((name) => ({ name, type: "daily" }));
+          try {
+            await supabase.from("daily_tags").upsert(tagRows, { onConflict: "name,type" });
+          } catch (err) {
+            await supabase.from("daily_tags").upsert(tagRows, { onConflict: "name" });
+          }
         } catch (e) {}
       }
 
@@ -2611,7 +2635,7 @@ const { archivePosts = [] } = Astro.props;
     if (!allTags.includes(clean)) {
       allTags.push(clean);
       allTags.sort((a, b) => a.localeCompare(b, "zh-CN"));
-      supabase.from("daily_tags").insert([{ name: clean }]).then();
+      supabase.from("daily_tags").insert([{ name: clean, type: "daily" }]).then();
     }
 
     if (!editingPostDraftTags.includes(clean)) {
@@ -2645,11 +2669,15 @@ const { archivePosts = [] } = Astro.props;
       // 1. 同步内存中当前 post 的 tags
       editingPost.tags = newTags;
 
-      // 2. 如果包含新标签，同步 upsert 到 daily_tags 表
+      // 2. 如果包含新标签，同步 upsert 到 daily_tags 表 (标记 type = 'daily')
       if (newTags.length > 0) {
         try {
-          const rows = newTags.map((name) => ({ name }));
-          await supabase.from("daily_tags").upsert(rows, { onConflict: "name" });
+          const rows = newTags.map((name) => ({ name, type: "daily" }));
+          try {
+            await supabase.from("daily_tags").upsert(rows, { onConflict: "name,type" });
+          } catch (err) {
+            await supabase.from("daily_tags").upsert(rows, { onConflict: "name" });
+          }
         } catch (e) {}
       }
 

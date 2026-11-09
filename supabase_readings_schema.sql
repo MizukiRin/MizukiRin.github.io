@@ -45,3 +45,18 @@ create policy "Authenticated users can delete daily_readings"
   to authenticated
   using (true);
 
+-- ========================================================
+-- 统一标签表体系：在 daily_tags 表中增加 type 字段区分模块
+-- ========================================================
+
+-- 1. 为 daily_tags 增加 type 字段，默认值为 'daily' (现有历史标签自动归为 daily，新 readings 标签标记为 'reading')
+alter table if exists daily_tags add column if not exists type text not null default 'daily';
+
+-- 2. 调整唯一性约束为 (name, type) 联合唯一，使得不同模块同名标签互不冲突
+alter table if exists daily_tags drop constraint if exists daily_tags_name_key;
+alter table if exists daily_tags drop constraint if exists daily_tags_name_type_key;
+alter table if exists daily_tags add constraint daily_tags_name_type_key unique (name, type);
+
+-- 3. 创建索引以加速按 type 过滤查询
+create index if not exists idx_daily_tags_type on daily_tags (type);
+
