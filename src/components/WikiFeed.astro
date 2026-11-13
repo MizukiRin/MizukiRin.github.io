@@ -978,7 +978,11 @@
         if (error) throw error;
         expandedIds.add(editingId);
       } else {
-        const { data, error } = await supabase.from("private_wiki").insert(payload).select("id").single();
+        const { data, error } = await supabase
+          .from("private_wiki")
+          .insert({ ...payload, author_github: AUTHOR_GITHUB })
+          .select("id")
+          .single();
         if (error) throw error;
         if (data?.id) expandedIds.add(data.id);
       }
