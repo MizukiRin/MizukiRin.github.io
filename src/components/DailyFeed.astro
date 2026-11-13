@@ -18,25 +18,10 @@ const { archivePosts = [] } = Astro.props;
       <span id="daily-count-badge" class="hidden text-[11px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">0</span>
     </div>
 
-    <!-- 用户身份与登录状态 -->
+    <!-- 博主操作区（登录入口已统一移至顶部全局导航栏） -->
     <div id="daily-auth-section" class="flex items-center space-x-2.5 text-xs font-mono">
-      <!-- 未登录状态：简约的 GitHub 登录按钮 -->
-      <button
-        id="github-login-btn"
-        class="inline-flex items-center space-x-1.5 text-neutral-500 hover:text-neutral-900 border border-neutral-200 hover:border-neutral-400 bg-white px-2.5 py-1 rounded transition-all shadow-xs cursor-pointer"
-        title="使用 GitHub 登录以发布动态"
-      >
-        <i class="ph ph-github-logo text-sm"></i>
-        <span>GitHub 登录</span>
-      </button>
-
-      <!-- 已登录状态 (默认隐藏，登录后显示作者信息与发帖/退出按钮) -->
-      <div id="daily-user-panel" class="hidden items-center space-x-2 sm:space-x-3">
-        <div class="flex items-center space-x-1.5">
-          <img id="user-avatar" src="" alt="avatar" class="w-5 h-5 rounded-full border border-neutral-200" />
-          <span id="user-name" class="text-neutral-800 font-medium max-w-[80px] sm:max-w-none truncate"></span>
-        </div>
-
+      <!-- 仅博主登录后展示操作按钮 -->
+      <div id="daily-user-panel" class="hidden items-center space-x-2">
         <!-- 发动态按钮：移动端纯方形小胶囊图标且完美水平垂直居中，桌面端带完整文字 -->
         <button
           id="toggle-compose-btn"
@@ -47,21 +32,13 @@ const { archivePosts = [] } = Astro.props;
           <span class="hidden sm:inline">发动态</span>
         </button>
 
-        <!-- 标签管理按钮：账号旁的专属方形小图标按钮，仅博主可见 -->
+        <!-- 标签管理按钮：专属方形小图标按钮，仅博主可见 -->
         <button
           id="open-tag-manager-btn"
           class="hidden w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-neutral-900 rounded hover:bg-neutral-100 transition-colors cursor-pointer select-none"
           title="标签管理"
         >
           <i class="ph ph-tag text-sm"></i>
-        </button>
-
-        <button
-          id="logout-btn"
-          class="w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-red-600 rounded hover:bg-neutral-100 transition-colors cursor-pointer"
-          title="退出登录"
-        >
-          <i class="ph ph-sign-out text-sm"></i>
         </button>
       </div>
     </div>
@@ -517,11 +494,7 @@ const { archivePosts = [] } = Astro.props;
   }
 
   // DOM 元素引用
-  const loginBtn = document.getElementById("github-login-btn");
   const userPanel = document.getElementById("daily-user-panel");
-  const userAvatar = document.getElementById("user-avatar") as HTMLImageElement | null;
-  const userName = document.getElementById("user-name");
-  const logoutBtn = document.getElementById("logout-btn");
   const toggleComposeBtn = document.getElementById("toggle-compose-btn");
   const composer = document.getElementById("daily-composer");
   const cancelComposeBtn = document.getElementById("cancel-compose-btn");
@@ -2357,24 +2330,12 @@ const { archivePosts = [] } = Astro.props;
       const ghUsername = user.user_metadata?.user_name || user.email?.split("@")[0] || "";
       isAuthor = ghUsername.toLowerCase() === AUTHOR_GITHUB.toLowerCase();
 
-      // 彻底隐藏登录按钮
-      if (loginBtn) {
-        loginBtn.style.display = "none";
-        loginBtn.classList.add("hidden");
-        loginBtn.classList.remove("inline-flex");
-      }
-
-      // 显示用户面板
-      if (userPanel) {
-        userPanel.style.display = "flex";
-        userPanel.classList.remove("hidden");
-        userPanel.classList.add("flex");
-      }
-
-      if (userAvatar) userAvatar.src = user.user_metadata?.avatar_url || `https://avatars.githubusercontent.com/${ghUsername}`;
-      if (userName) userName.textContent = `@${ghUsername}`;
-
       if (isAuthor) {
+        if (userPanel) {
+          userPanel.style.display = "flex";
+          userPanel.classList.remove("hidden");
+          userPanel.classList.add("flex");
+        }
         if (toggleComposeBtn) {
           toggleComposeBtn.style.display = "inline-flex";
           toggleComposeBtn.classList.remove("hidden");
@@ -2386,6 +2347,11 @@ const { archivePosts = [] } = Astro.props;
           openTagManagerBtn.classList.add("flex");
         }
       } else {
+        if (userPanel) {
+          userPanel.style.display = "none";
+          userPanel.classList.add("hidden");
+          userPanel.classList.remove("flex");
+        }
         if (toggleComposeBtn) {
           toggleComposeBtn.style.display = "none";
           toggleComposeBtn.classList.add("hidden");
@@ -2399,14 +2365,6 @@ const { archivePosts = [] } = Astro.props;
     } else {
       isAuthor = false;
 
-      // 恢复显示登录按钮
-      if (loginBtn) {
-        loginBtn.style.display = "inline-flex";
-        loginBtn.classList.remove("hidden");
-        loginBtn.classList.add("inline-flex");
-      }
-
-      // 隐藏用户面板与发帖框
       if (userPanel) {
         userPanel.style.display = "none";
         userPanel.classList.add("hidden");
@@ -2430,37 +2388,6 @@ const { archivePosts = [] } = Astro.props;
   }
 
   // 事件监听绑定
-  loginBtn?.addEventListener("click", async () => {
-    try {
-      // 记录激活 tab 到 sessionStorage 并拼入 redirect 参数，确保登录后直接跳回 daily
-      sessionStorage.setItem("active_blog_tab", "daily");
-      const cleanRedirectUrl = `${window.location.origin}${window.location.pathname}?tab=daily`;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "github",
-        options: {
-          redirectTo: cleanRedirectUrl,
-        },
-      });
-      if (error) {
-        console.error("GitHub 登录失败:", error);
-        alert("登录失败: " + error.message);
-      }
-    } catch (err: any) {
-      console.error("登录异常:", err);
-      alert("登录异常: " + (err.message || err));
-    }
-  });
-
-  logoutBtn?.addEventListener("click", async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.error("退出异常:", e);
-    }
-    // 清除 URL hash/query，并刷新页面彻底重置所有本地内存状态
-    window.history.replaceState({}, document.title, window.location.pathname);
-    window.location.reload();
-  });
 
   toggleComposeBtn?.addEventListener("click", () => {
     composer?.classList.toggle("hidden");

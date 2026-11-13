@@ -1,0 +1,1041 @@
+---
+// Private Personal Knowledge Base (/wiki)
+---
+
+<section id="wiki-container" class="space-y-6">
+  <!-- 1. 未授权/未登录锁定界面 -->
+  <div id="wiki-lock-screen" class="hidden py-24 text-center">
+    <div class="max-w-xs mx-auto space-y-3">
+      <div class="w-11 h-11 mx-auto rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-500">
+        <i class="ph ph-lock-key text-xl"></i>
+      </div>
+      <div class="space-y-1">
+        <h2 class="text-xs font-mono font-semibold text-neutral-700 tracking-wider uppercase">Private Knowledge Base</h2>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 博主专属知识库工作台 -->
+  <div id="wiki-author-view" class="hidden space-y-5">
+    <!-- 顶部栏 -->
+    <div class="flex items-center justify-between border-b border-neutral-200 pb-3">
+      <div class="flex items-center space-x-2.5">
+        <span class="text-xs font-mono font-semibold tracking-wider text-neutral-900 uppercase">WIKI</span>
+        <span id="wiki-count-badge" class="text-[11px] font-mono text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-full">0 篇</span>
+      </div>
+
+      <div class="flex items-center space-x-2 text-xs font-mono">
+        <button
+          id="wiki-toggle-compose-btn"
+          class="inline-flex items-center space-x-1 bg-neutral-900 hover:bg-neutral-800 text-white rounded px-2.5 py-1 transition-colors shadow-xs cursor-pointer whitespace-nowrap select-none"
+          title="新建词条"
+        >
+          <i class="ph ph-plus text-sm"></i>
+          <span>新建词条</span>
+        </button>
+        <button
+          id="wiki-open-tag-manager-btn"
+          class="w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-neutral-900 rounded hover:bg-neutral-100 transition-colors cursor-pointer select-none"
+          title="Wiki 标签管理"
+        >
+          <i class="ph ph-tag text-sm"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 搜索与标签筛选栏 -->
+    <div class="space-y-3">
+      <div class="relative">
+        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm"></i>
+        <input
+          id="wiki-search-input"
+          type="text"
+          placeholder="搜索标题、正文关键词或 #标签..."
+          class="w-full pl-9 pr-8 py-2 text-xs font-mono bg-white border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-800 placeholder-neutral-400 transition-colors"
+        />
+        <button
+          id="wiki-search-clear-btn"
+          class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+          title="清空搜索"
+        >
+          <i class="ph ph-x text-xs"></i>
+        </button>
+      </div>
+
+      <div id="wiki-tag-filter-bar" class="flex flex-wrap items-center gap-1.5 text-[11px] font-mono"></div>
+    </div>
+
+    <!-- 新建 / 编辑词条表单 -->
+    <div id="wiki-composer" class="hidden bg-white border border-neutral-200 rounded-sm p-4 space-y-3.5 shadow-xs animate-fade-in text-xs font-mono">
+      <div class="flex items-center justify-between pb-2 border-b border-neutral-100">
+        <span id="wiki-composer-mode-label" class="font-semibold text-neutral-800">新建知识词条</span>
+        <label class="inline-flex items-center space-x-1.5 text-neutral-600 cursor-pointer select-none">
+          <input id="wiki-input-pinned" type="checkbox" class="accent-neutral-900 rounded cursor-pointer" />
+          <span>置顶词条</span>
+        </label>
+      </div>
+
+      <input
+        id="wiki-input-title"
+        type="text"
+        placeholder="词条标题（例如：PostgreSQL vs MySQL 核心差异速查）"
+        class="w-full px-3 py-2 bg-neutral-50/70 border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-900 text-xs font-sans font-medium"
+      />
+
+      <!-- 标签编辑区 -->
+      <div class="space-y-2">
+        <div class="flex items-center space-x-2">
+          <input
+            id="wiki-input-tag"
+            type="text"
+            placeholder="添加标签（回车确认，如：数据库、Redis）"
+            class="flex-1 px-2.5 py-1.5 bg-neutral-50/70 border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-800"
+          />
+          <button
+            id="wiki-add-tag-btn"
+            type="button"
+            class="px-2.5 py-1.5 border border-neutral-200 hover:border-neutral-400 text-neutral-600 hover:text-neutral-900 rounded-sm transition-colors cursor-pointer"
+          >
+            添加
+          </button>
+        </div>
+        <div id="wiki-draft-tags" class="flex flex-wrap gap-1.5"></div>
+        <div id="wiki-suggested-tags" class="flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-400"></div>
+      </div>
+
+      <!-- Markdown 编辑 / 预览切换 -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between border-b border-neutral-100 pb-1.5">
+          <div class="flex items-center space-x-1">
+            <button
+              id="wiki-tab-edit"
+              type="button"
+              class="px-2.5 py-1 rounded-sm bg-neutral-900 text-white transition-colors cursor-pointer"
+            >
+              编辑 Markdown
+            </button>
+            <button
+              id="wiki-tab-preview"
+              type="button"
+              class="px-2.5 py-1 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+            >
+              实时预览
+            </button>
+          </div>
+          <span class="text-[10px] text-neutral-400">支持标题、列表、表格、代码块 (Ctrl+Enter 保存)</span>
+        </div>
+
+        <textarea
+          id="wiki-input-content"
+          rows="10"
+          placeholder="使用 Markdown 记录要点、对比表格、SQL/命令片段..."
+          class="w-full p-3 bg-neutral-50/70 border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-800 font-mono text-xs leading-relaxed resize-y"
+        ></textarea>
+
+        <div
+          id="wiki-preview-pane"
+          class="hidden min-h-[200px] max-h-[420px] overflow-y-auto p-4 bg-neutral-50/40 border border-neutral-200 rounded-sm prose prose-sm max-w-none font-sans"
+        ></div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-2 pt-1">
+        <button
+          id="wiki-cancel-btn"
+          type="button"
+          class="px-3 py-1.5 border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:border-neutral-400 rounded-sm transition-colors cursor-pointer"
+        >
+          取消
+        </button>
+        <button
+          id="wiki-submit-btn"
+          type="button"
+          class="px-4 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50"
+        >
+          保存词条
+        </button>
+      </div>
+    </div>
+
+    <!-- 词条列表 -->
+    <div id="wiki-list" class="space-y-3"></div>
+  </div>
+
+  <!-- 3. Wiki 标签管理弹窗 -->
+  <div id="wiki-tag-manager-modal" class="hidden fixed inset-0 z-50 bg-neutral-900/40 backdrop-blur-[1px] flex items-center justify-center p-4">
+    <div class="bg-white border border-neutral-200 rounded-sm w-full max-w-md shadow-lg overflow-hidden text-xs font-mono">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
+        <div class="flex items-center space-x-2">
+          <i class="ph ph-tag text-neutral-700"></i>
+          <span class="font-semibold text-neutral-900">Wiki 标签管理</span>
+          <span id="wiki-tag-manager-total-count" class="text-[11px] text-neutral-400">(0)</span>
+        </div>
+        <button id="wiki-tag-manager-close-icon-btn" class="text-neutral-400 hover:text-neutral-900 cursor-pointer">
+          <i class="ph ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <div class="p-4 space-y-3">
+        <div class="flex items-center space-x-2">
+          <input
+            id="wiki-tag-manager-new-input"
+            type="text"
+            placeholder="新建 Wiki 标签..."
+            class="flex-1 px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-800"
+          />
+          <button
+            id="wiki-tag-manager-add-btn"
+            class="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-sm transition-colors cursor-pointer"
+          >
+            添加
+          </button>
+        </div>
+
+        <div id="wiki-tag-manager-list" class="max-h-72 overflow-y-auto divide-y divide-neutral-100 border border-neutral-100 rounded-sm"></div>
+      </div>
+
+      <div class="px-4 py-2.5 bg-neutral-50 border-t border-neutral-100 flex justify-end">
+        <button
+          id="wiki-tag-manager-close-btn"
+          class="px-3 py-1 border border-neutral-200 bg-white hover:border-neutral-400 text-neutral-700 rounded-sm cursor-pointer"
+        >
+          关闭
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { supabase, AUTHOR_GITHUB } from "../utils/supabase";
+
+  interface WikiEntry {
+    id: string;
+    created_at: string;
+    updated_at: string;
+    title: string;
+    content: string;
+    tags: string[];
+    is_pinned: boolean;
+  }
+
+  let isAuthor = false;
+  let allEntries: WikiEntry[] = [];
+  let allWikiTags: string[] = [];
+  let activeTagFilter: string | null = null;
+  let searchQuery = "";
+  let editingId: string | null = null;
+  let draftTags: string[] = [];
+  const expandedIds = new Set<string>();
+
+  // DOM 引用
+  const lockScreen = document.getElementById("wiki-lock-screen");
+  const lockDesc = document.getElementById("wiki-lock-desc");
+  const authorView = document.getElementById("wiki-author-view");
+  const countBadge = document.getElementById("wiki-count-badge");
+
+  const searchInput = document.getElementById("wiki-search-input") as HTMLInputElement | null;
+  const searchClearBtn = document.getElementById("wiki-search-clear-btn");
+  const tagFilterBar = document.getElementById("wiki-tag-filter-bar");
+  const wikiList = document.getElementById("wiki-list");
+
+  const toggleComposeBtn = document.getElementById("wiki-toggle-compose-btn");
+  const composer = document.getElementById("wiki-composer");
+  const composerModeLabel = document.getElementById("wiki-composer-mode-label");
+  const inputPinned = document.getElementById("wiki-input-pinned") as HTMLInputElement | null;
+  const inputTitle = document.getElementById("wiki-input-title") as HTMLInputElement | null;
+  const inputTag = document.getElementById("wiki-input-tag") as HTMLInputElement | null;
+  const addTagBtn = document.getElementById("wiki-add-tag-btn");
+  const draftTagsEl = document.getElementById("wiki-draft-tags");
+  const suggestedTagsEl = document.getElementById("wiki-suggested-tags");
+  const tabEditBtn = document.getElementById("wiki-tab-edit");
+  const tabPreviewBtn = document.getElementById("wiki-tab-preview");
+  const inputContent = document.getElementById("wiki-input-content") as HTMLTextAreaElement | null;
+  const previewPane = document.getElementById("wiki-preview-pane");
+  const cancelBtn = document.getElementById("wiki-cancel-btn");
+  const submitBtn = document.getElementById("wiki-submit-btn") as HTMLButtonElement | null;
+
+  const openTagManagerBtn = document.getElementById("wiki-open-tag-manager-btn");
+  const tagManagerModal = document.getElementById("wiki-tag-manager-modal");
+  const tagManagerCloseBtn = document.getElementById("wiki-tag-manager-close-btn");
+  const tagManagerCloseIconBtn = document.getElementById("wiki-tag-manager-close-icon-btn");
+  const tagManagerNewInput = document.getElementById("wiki-tag-manager-new-input") as HTMLInputElement | null;
+  const tagManagerAddBtn = document.getElementById("wiki-tag-manager-add-btn");
+  const tagManagerList = document.getElementById("wiki-tag-manager-list");
+  const tagManagerTotalCount = document.getElementById("wiki-tag-manager-total-count");
+
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function sanitizeUrl(url: string): string {
+    const trimmed = url.trim();
+    if (/^(https?:\/\/|\/|#)/i.test(trimmed)) return trimmed;
+    return "#";
+  }
+
+  function formatInlineMarkdown(raw: string): string {
+    const codeTokens: string[] = [];
+    let text = raw.replace(/`([^`]+)`/g, (_m, code) => {
+      const idx = codeTokens.length;
+      codeTokens.push(`<code>${escapeHtml(code)}</code>`);
+      return `@@CODE_${idx}@@`;
+    });
+
+    text = escapeHtml(text);
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+      return `<a href="${escapeHtml(sanitizeUrl(url))}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    });
+    text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    text = text.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    text = text.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+
+    text = text.replace(/@@CODE_(\d+)@@/g, (_m, idx) => codeTokens[Number(idx)] || "");
+    return text;
+  }
+
+  /** Render sanitized Markdown subset (headings, lists, quotes, code blocks, GFM tables) to HTML. */
+  function renderMarkdown(md: string): string {
+    const lines = md.replace(/\r\n/g, "\n").split("\n");
+    const html: string[] = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // Fenced code block
+      const fenceMatch = line.match(/^```(.*)$/);
+      if (fenceMatch) {
+        const lang = fenceMatch[1].trim();
+        const codeLines: string[] = [];
+        i++;
+        while (i < lines.length && !lines[i].startsWith("```")) {
+          codeLines.push(lines[i]);
+          i++;
+        }
+        i++; // skip closing fence
+        const langAttr = lang ? ` data-lang="${escapeHtml(lang)}"` : "";
+        html.push(`<pre${langAttr}><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+        continue;
+      }
+
+      if (!line.trim()) {
+        i++;
+        continue;
+      }
+
+      // Horizontal rule
+      if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line.trim())) {
+        html.push("<hr />");
+        i++;
+        continue;
+      }
+
+      // Headings
+      const headingMatch = line.match(/^(#{1,4})\s+(.*)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        html.push(`<h${level}>${formatInlineMarkdown(headingMatch[2])}</h${level}>`);
+        i++;
+        continue;
+      }
+
+      // GFM Table
+      if (
+        line.includes("|") &&
+        i + 1 < lines.length &&
+        /^\s*\|?[\s:-]+\|[\s|:-]*$/.test(lines[i + 1])
+      ) {
+        const parseRow = (row: string) =>
+          row
+            .trim()
+            .replace(/^\|/, "")
+            .replace(/\|$/, "")
+            .split("|")
+            .map((cell) => formatInlineMarkdown(cell.trim()));
+
+        const headers = parseRow(line);
+        i += 2;
+        const rows: string[][] = [];
+        while (i < lines.length && lines[i].includes("|") && lines[i].trim() !== "") {
+          rows.push(parseRow(lines[i]));
+          i++;
+        }
+        const thead = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>`;
+        const tbody = rows.length
+          ? `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`
+          : "";
+        html.push(`<table>${thead}${tbody}</table>`);
+        continue;
+      }
+
+      // Blockquote
+      if (line.trimStart().startsWith(">")) {
+        const quoteLines: string[] = [];
+        while (i < lines.length && lines[i].trimStart().startsWith(">")) {
+          quoteLines.push(lines[i].replace(/^\s*>\s?/, ""));
+          i++;
+        }
+        html.push(`<blockquote><p>${quoteLines.map(formatInlineMarkdown).join("<br />")}</p></blockquote>`);
+        continue;
+      }
+
+      // Unordered list
+      if (/^\s*[-*+]\s+/.test(line)) {
+        const items: string[] = [];
+        while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
+          items.push(`<li>${formatInlineMarkdown(lines[i].replace(/^\s*[-*+]\s+/, ""))}</li>`);
+          i++;
+        }
+        html.push(`<ul>${items.join("")}</ul>`);
+        continue;
+      }
+
+      // Ordered list
+      if (/^\s*\d+\.\s+/.test(line)) {
+        const items: string[] = [];
+        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
+          items.push(`<li>${formatInlineMarkdown(lines[i].replace(/^\s*\d+\.\s+/, ""))}</li>`);
+          i++;
+        }
+        html.push(`<ol>${items.join("")}</ol>`);
+        continue;
+      }
+
+      // Paragraph
+      const paraLines: string[] = [];
+      while (
+        i < lines.length &&
+        lines[i].trim() !== "" &&
+        !lines[i].startsWith("```") &&
+        !/^(#{1,4})\s+/.test(lines[i]) &&
+        !/^\s*[-*+]\s+/.test(lines[i]) &&
+        !/^\s*\d+\.\s+/.test(lines[i]) &&
+        !lines[i].trimStart().startsWith(">") &&
+        !/^(\*{3,}|-{3,}|_{3,})\s*$/.test(lines[i].trim())
+      ) {
+        paraLines.push(formatInlineMarkdown(lines[i]));
+        i++;
+      }
+      html.push(`<p>${paraLines.join("<br />")}</p>`);
+    }
+
+    return html.join("\n");
+  }
+
+  function formatDateShort(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function setPreviewMode(preview: boolean) {
+    if (!inputContent || !previewPane || !tabEditBtn || !tabPreviewBtn) return;
+    if (preview) {
+      previewPane.innerHTML = inputContent.value.trim()
+        ? renderMarkdown(inputContent.value)
+        : '<p class="text-neutral-400 italic">暂无内容可预览</p>';
+      inputContent.classList.add("hidden");
+      previewPane.classList.remove("hidden");
+      tabPreviewBtn.className = "px-2.5 py-1 rounded-sm bg-neutral-900 text-white transition-colors cursor-pointer";
+      tabEditBtn.className = "px-2.5 py-1 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer";
+    } else {
+      previewPane.classList.add("hidden");
+      inputContent.classList.remove("hidden");
+      tabEditBtn.className = "px-2.5 py-1 rounded-sm bg-neutral-900 text-white transition-colors cursor-pointer";
+      tabPreviewBtn.className = "px-2.5 py-1 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer";
+    }
+  }
+
+  function renderDraftTags() {
+    if (!draftTagsEl) return;
+    draftTagsEl.innerHTML = draftTags
+      .map(
+        (tag) => `
+        <span class="inline-flex items-center space-x-1 px-2 py-0.5 bg-neutral-900 text-white rounded-sm text-[11px]">
+          <span>#${escapeHtml(tag)}</span>
+          <button type="button" data-remove-tag="${escapeHtml(tag)}" class="hover:text-neutral-300 cursor-pointer">×</button>
+        </span>
+      `
+      )
+      .join("");
+
+    draftTagsEl.querySelectorAll("[data-remove-tag]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-remove-tag");
+        draftTags = draftTags.filter((t) => t !== target);
+        renderDraftTags();
+        renderSuggestedTags();
+      });
+    });
+  }
+
+  function renderSuggestedTags() {
+    if (!suggestedTagsEl) return;
+    const available = allWikiTags.filter((t) => !draftTags.includes(t));
+    if (available.length === 0) {
+      suggestedTagsEl.innerHTML = "";
+      return;
+    }
+    suggestedTagsEl.innerHTML = `
+      <span>常用:</span>
+      ${available
+        .slice(0, 12)
+        .map(
+          (tag) => `
+          <button type="button" data-suggest-tag="${escapeHtml(tag)}" class="px-1.5 py-0.5 border border-neutral-200 hover:border-neutral-400 text-neutral-500 hover:text-neutral-900 rounded-sm transition-colors cursor-pointer">
+            #${escapeHtml(tag)}
+          </button>
+        `
+        )
+        .join("")}
+    `;
+
+    suggestedTagsEl.querySelectorAll("[data-suggest-tag]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tag = btn.getAttribute("data-suggest-tag");
+        if (tag && !draftTags.includes(tag)) {
+          draftTags.push(tag);
+          renderDraftTags();
+          renderSuggestedTags();
+        }
+      });
+    });
+  }
+
+  function addDraftTagFromInput() {
+    if (!inputTag) return;
+    const cleaned = inputTag.value.trim().replace(/^#+/, "");
+    if (cleaned && !draftTags.includes(cleaned)) {
+      draftTags.push(cleaned);
+      renderDraftTags();
+      renderSuggestedTags();
+    }
+    inputTag.value = "";
+  }
+
+  function resetComposer() {
+    editingId = null;
+    draftTags = [];
+    if (composerModeLabel) composerModeLabel.textContent = "新建知识词条";
+    if (inputTitle) inputTitle.value = "";
+    if (inputTag) inputTag.value = "";
+    if (inputContent) inputContent.value = "";
+    if (inputPinned) inputPinned.checked = false;
+    setPreviewMode(false);
+    renderDraftTags();
+    renderSuggestedTags();
+  }
+
+  function openComposerForEdit(entry: WikiEntry) {
+    editingId = entry.id;
+    draftTags = [...(entry.tags || [])];
+    if (composerModeLabel) composerModeLabel.textContent = "编辑知识词条";
+    if (inputTitle) inputTitle.value = entry.title;
+    if (inputContent) inputContent.value = entry.content;
+    if (inputPinned) inputPinned.checked = Boolean(entry.is_pinned);
+    setPreviewMode(false);
+    renderDraftTags();
+    renderSuggestedTags();
+    composer?.classList.remove("hidden");
+    inputTitle?.focus();
+    composer?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function getFilteredEntries(): WikiEntry[] {
+    const q = searchQuery.trim().toLowerCase();
+    return allEntries.filter((entry) => {
+      if (activeTagFilter && !(entry.tags || []).includes(activeTagFilter)) {
+        return false;
+      }
+      if (!q) return true;
+      const inTitle = entry.title.toLowerCase().includes(q);
+      const inContent = entry.content.toLowerCase().includes(q);
+      const inTags = (entry.tags || []).some((t) => t.toLowerCase().includes(q));
+      return inTitle || inContent || inTags;
+    });
+  }
+
+  function renderTagFilterBar() {
+    if (!tagFilterBar) return;
+    const tagCounts = new Map<string, number>();
+    allWikiTags.forEach((t) => tagCounts.set(t, 0));
+    allEntries.forEach((entry) => {
+      (entry.tags || []).forEach((t) => {
+        tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+      });
+    });
+
+    const sortedTags = Array.from(tagCounts.keys()).sort((a, b) => (tagCounts.get(b) || 0) - (tagCounts.get(a) || 0));
+
+    const allBtnClass =
+      activeTagFilter === null
+        ? "bg-neutral-900 text-white border-neutral-900"
+        : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900";
+
+    tagFilterBar.innerHTML = [
+      `<button type="button" data-filter-tag="" class="px-2 py-0.5 border rounded-sm transition-colors cursor-pointer ${allBtnClass}">全部 (${allEntries.length})</button>`,
+      ...sortedTags.map((tag) => {
+        const count = tagCounts.get(tag) || 0;
+        const active = activeTagFilter === tag;
+        const cls = active
+          ? "bg-neutral-900 text-white border-neutral-900"
+          : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900";
+        return `<button type="button" data-filter-tag="${escapeHtml(tag)}" class="px-2 py-0.5 border rounded-sm transition-colors cursor-pointer ${cls}">#${escapeHtml(tag)} <span class="opacity-60">${count}</span></button>`;
+      }),
+    ].join("");
+
+    tagFilterBar.querySelectorAll("[data-filter-tag]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tag = btn.getAttribute("data-filter-tag");
+        activeTagFilter = tag ? (activeTagFilter === tag ? null : tag) : null;
+        renderTagFilterBar();
+        renderWikiList();
+      });
+    });
+  }
+
+  function renderWikiList() {
+    if (!wikiList) return;
+    const items = getFilteredEntries();
+    if (countBadge) {
+      countBadge.textContent = `${items.length} 篇`;
+    }
+
+    if (items.length === 0) {
+      wikiList.innerHTML = `
+        <div class="py-12 text-center border border-dashed border-neutral-200 rounded-sm text-xs font-mono text-neutral-400">
+          ${allEntries.length === 0 ? "知识库暂无词条，点击右上角「新建词条」开始记录。" : "没有匹配当前筛选或搜索条件的词条。"}
+        </div>
+      `;
+      return;
+    }
+
+    wikiList.innerHTML = items
+      .map((entry) => {
+        const isExpanded = expandedIds.has(entry.id);
+        const tagsHtml = (entry.tags || [])
+          .map(
+            (t) =>
+              `<button type="button" data-card-tag="${escapeHtml(t)}" class="px-1.5 py-0.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-sm text-[11px] font-mono transition-colors cursor-pointer">#${escapeHtml(t)}</button>`
+          )
+          .join("");
+
+        return `
+          <article class="bg-white border ${entry.is_pinned ? "border-neutral-300" : "border-neutral-200"} rounded-sm transition-colors">
+            <div data-toggle-entry="${entry.id}" class="flex items-start justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-neutral-50/70 transition-colors select-none">
+              <div class="min-w-0 flex-1 space-y-1.5">
+                <div class="flex items-center space-x-2">
+                  ${entry.is_pinned ? '<i class="ph-fill ph-push-pin text-neutral-700 text-xs shrink-0" title="已置顶"></i>' : ""}
+                  <h3 class="text-sm font-medium text-neutral-900 truncate">${escapeHtml(entry.title)}</h3>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  ${tagsHtml}
+                  <span class="text-[11px] font-mono text-neutral-400">更新于 ${formatDateShort(entry.updated_at || entry.created_at)}</span>
+                </div>
+              </div>
+              <div class="text-neutral-400 pt-0.5 shrink-0">
+                <i class="ph ${isExpanded ? "ph-caret-up" : "ph-caret-down"} text-sm"></i>
+              </div>
+            </div>
+
+            <div class="${isExpanded ? "block" : "hidden"} border-t border-neutral-100 px-4 py-3.5 space-y-3">
+              <div class="flex items-center justify-end space-x-2 text-[11px] font-mono border-b border-neutral-100 pb-2">
+                <button type="button" data-pin-entry="${entry.id}" class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 cursor-pointer">
+                  <i class="ph ph-push-pin text-xs"></i>
+                  <span>${entry.is_pinned ? "取消置顶" : "置顶"}</span>
+                </button>
+                <button type="button" data-copy-entry="${entry.id}" class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 cursor-pointer">
+                  <i class="ph ph-copy text-xs"></i>
+                  <span>复制 MD</span>
+                </button>
+                <button type="button" data-edit-entry="${entry.id}" class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 cursor-pointer">
+                  <i class="ph ph-pencil-simple text-xs"></i>
+                  <span>编辑</span>
+                </button>
+                <button type="button" data-delete-entry="${entry.id}" class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-sm text-neutral-400 hover:text-red-600 hover:bg-red-50 cursor-pointer">
+                  <i class="ph ph-trash text-xs"></i>
+                  <span>删除</span>
+                </button>
+              </div>
+              <div class="prose prose-sm max-w-none text-neutral-700">
+                ${renderMarkdown(entry.content)}
+              </div>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+
+    // Bind card events
+    wikiList.querySelectorAll("[data-toggle-entry]").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("[data-card-tag]")) return;
+        const id = el.getAttribute("data-toggle-entry");
+        if (!id) return;
+        if (expandedIds.has(id)) expandedIds.delete(id);
+        else expandedIds.add(id);
+        renderWikiList();
+      });
+    });
+
+    wikiList.querySelectorAll("[data-card-tag]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const tag = btn.getAttribute("data-card-tag");
+        if (!tag) return;
+        activeTagFilter = activeTagFilter === tag ? null : tag;
+        renderTagFilterBar();
+        renderWikiList();
+      });
+    });
+
+    wikiList.querySelectorAll("[data-pin-entry]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-pin-entry");
+        const entry = allEntries.find((x) => x.id === id);
+        if (!entry) return;
+        const { error } = await supabase
+          .from("private_wiki")
+          .update({ is_pinned: !entry.is_pinned, updated_at: new Date().toISOString() })
+          .eq("id", entry.id);
+        if (error) {
+          alert("操作失败: " + error.message);
+          return;
+        }
+        await loadWikiData();
+      });
+    });
+
+    wikiList.querySelectorAll("[data-copy-entry]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-copy-entry");
+        const entry = allEntries.find((x) => x.id === id);
+        if (!entry) return;
+        try {
+          await navigator.clipboard.writeText(`# ${entry.title}\n\n${entry.content}`);
+          const span = btn.querySelector("span");
+          if (span) {
+            span.textContent = "已复制";
+            setTimeout(() => {
+              span.textContent = "复制 MD";
+            }, 1200);
+          }
+        } catch {
+          alert("复制失败，请手动复制。");
+        }
+      });
+    });
+
+    wikiList.querySelectorAll("[data-edit-entry]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-edit-entry");
+        const entry = allEntries.find((x) => x.id === id);
+        if (entry) openComposerForEdit(entry);
+      });
+    });
+
+    wikiList.querySelectorAll("[data-delete-entry]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-delete-entry");
+        const entry = allEntries.find((x) => x.id === id);
+        if (!entry || !confirm(`确定删除词条「${entry.title}」？此操作不可撤销。`)) return;
+        const { error } = await supabase.from("private_wiki").delete().eq("id", entry.id);
+        if (error) {
+          alert("删除失败: " + error.message);
+          return;
+        }
+        expandedIds.delete(entry.id);
+        await loadWikiData();
+      });
+    });
+  }
+
+  async function syncTagsToTable(tags: string[]) {
+    const newOnes = tags.filter((t) => !allWikiTags.includes(t));
+    if (newOnes.length === 0) return;
+    await supabase.from("daily_tags").upsert(
+      newOnes.map((name) => ({ name, type: "wiki" })),
+      { onConflict: "name,type", ignoreDuplicates: true }
+    );
+  }
+
+  async function loadWikiData() {
+    if (!isAuthor) return;
+
+    const [tagsRes, entriesRes] = await Promise.all([
+      supabase.from("daily_tags").select("name").eq("type", "wiki").order("name", { ascending: true }),
+      supabase
+        .from("private_wiki")
+        .select("*")
+        .order("is_pinned", { ascending: false })
+        .order("updated_at", { ascending: false }),
+    ]);
+
+    if (tagsRes.data) {
+      allWikiTags = tagsRes.data.map((r: any) => r.name);
+    }
+    if (entriesRes.error) {
+      console.error("加载 Wiki 失败:", entriesRes.error);
+      if (wikiList) {
+        wikiList.innerHTML = `<div class="p-4 border border-red-200 bg-red-50 text-red-700 text-xs font-mono rounded-sm">加载失败: ${escapeHtml(entriesRes.error.message)}</div>`;
+      }
+      return;
+    }
+
+    allEntries = entriesRes.data || [];
+    renderTagFilterBar();
+    renderSuggestedTags();
+    renderWikiList();
+  }
+
+  function renderTagManagerList() {
+    if (!tagManagerList || !tagManagerTotalCount) return;
+    tagManagerTotalCount.textContent = `(${allWikiTags.length})`;
+    if (allWikiTags.length === 0) {
+      tagManagerList.innerHTML = '<div class="p-4 text-center text-neutral-400">暂无 Wiki 标签</div>';
+      return;
+    }
+
+    const usageMap = new Map<string, number>();
+    allEntries.forEach((e) => (e.tags || []).forEach((t) => usageMap.set(t, (usageMap.get(t) || 0) + 1)));
+
+    tagManagerList.innerHTML = allWikiTags
+      .map(
+        (tag) => `
+        <div class="flex items-center justify-between px-3 py-2 hover:bg-neutral-50">
+          <div class="flex items-center space-x-2 min-w-0">
+            <span class="text-neutral-800 truncate">#${escapeHtml(tag)}</span>
+            <span class="text-[10px] text-neutral-400">${usageMap.get(tag) || 0} 篇</span>
+          </div>
+          <div class="flex items-center space-x-2 shrink-0">
+            <button type="button" data-rename-wiki-tag="${escapeHtml(tag)}" class="text-neutral-400 hover:text-neutral-900 cursor-pointer" title="重命名">
+              <i class="ph ph-pencil-simple text-xs"></i>
+            </button>
+            <button type="button" data-delete-wiki-tag="${escapeHtml(tag)}" class="text-neutral-400 hover:text-red-600 cursor-pointer" title="删除">
+              <i class="ph ph-trash text-xs"></i>
+            </button>
+          </div>
+        </div>
+      `
+      )
+      .join("");
+
+    tagManagerList.querySelectorAll("[data-rename-wiki-tag]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const oldName = btn.getAttribute("data-rename-wiki-tag");
+        if (!oldName) return;
+        const newName = prompt(`重命名标签 #${oldName}:`, oldName)?.trim().replace(/^#+/, "");
+        if (!newName || newName === oldName) return;
+
+        await supabase.from("daily_tags").update({ name: newName }).eq("name", oldName).eq("type", "wiki");
+        const affected = allEntries.filter((e) => (e.tags || []).includes(oldName));
+        for (const entry of affected) {
+          const nextTags = Array.from(new Set(entry.tags.map((t) => (t === oldName ? newName : t))));
+          await supabase.from("private_wiki").update({ tags: nextTags }).eq("id", entry.id);
+        }
+        if (activeTagFilter === oldName) activeTagFilter = newName;
+        await loadWikiData();
+        renderTagManagerList();
+      });
+    });
+
+    tagManagerList.querySelectorAll("[data-delete-wiki-tag]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const tag = btn.getAttribute("data-delete-wiki-tag");
+        if (!tag || !confirm(`确定删除标签 #${tag}？已关联词条中的该标签也会被移除。`)) return;
+
+        await supabase.from("daily_tags").delete().eq("name", tag).eq("type", "wiki");
+        const affected = allEntries.filter((e) => (e.tags || []).includes(tag));
+        for (const entry of affected) {
+          const nextTags = entry.tags.filter((t) => t !== tag);
+          await supabase.from("private_wiki").update({ tags: nextTags }).eq("id", entry.id);
+        }
+        if (activeTagFilter === tag) activeTagFilter = null;
+        await loadWikiData();
+        renderTagManagerList();
+      });
+    });
+  }
+
+  function handleAuthState(user: any) {
+    const ghUsername = user?.user_metadata?.user_name || user?.email?.split("@")[0] || "";
+    isAuthor = Boolean(user && ghUsername.toLowerCase() === AUTHOR_GITHUB.toLowerCase());
+
+    if (isAuthor) {
+      lockScreen?.classList.add("hidden");
+      authorView?.classList.remove("hidden");
+      loadWikiData();
+    } else {
+      authorView?.classList.add("hidden");
+      lockScreen?.classList.remove("hidden");
+      allEntries = [];
+      if (lockDesc) {
+        lockDesc.textContent = user
+          ? `当前账号 @${ghUsername} 无访问权限，仅博主本人登录后可见。`
+          : "仅作者本人登录后可见。";
+      }
+    }
+  }
+
+  // Event listeners
+
+  searchInput?.addEventListener("input", () => {
+    searchQuery = searchInput.value;
+    if (searchClearBtn) {
+      if (searchQuery) searchClearBtn.classList.remove("hidden");
+      else searchClearBtn.classList.add("hidden");
+    }
+    renderWikiList();
+  });
+
+  searchClearBtn?.addEventListener("click", () => {
+    if (!searchInput) return;
+    searchInput.value = "";
+    searchQuery = "";
+    searchClearBtn.classList.add("hidden");
+    renderWikiList();
+    searchInput.focus();
+  });
+
+  toggleComposeBtn?.addEventListener("click", () => {
+    if (editingId) {
+      resetComposer();
+      composer?.classList.remove("hidden");
+      inputTitle?.focus();
+      return;
+    }
+    composer?.classList.toggle("hidden");
+    if (composer && !composer.classList.contains("hidden")) {
+      renderDraftTags();
+      renderSuggestedTags();
+      inputTitle?.focus();
+    }
+  });
+
+  cancelBtn?.addEventListener("click", () => {
+    resetComposer();
+    composer?.classList.add("hidden");
+  });
+
+  addTagBtn?.addEventListener("click", addDraftTagFromInput);
+  inputTag?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addDraftTagFromInput();
+    }
+  });
+
+  tabEditBtn?.addEventListener("click", () => setPreviewMode(false));
+  tabPreviewBtn?.addEventListener("click", () => setPreviewMode(true));
+
+  inputContent?.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = inputContent.selectionStart;
+      const end = inputContent.selectionEnd;
+      inputContent.value = `${inputContent.value.slice(0, start)}  ${inputContent.value.slice(end)}`;
+      inputContent.selectionStart = inputContent.selectionEnd = start + 2;
+    } else if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      submitBtn?.click();
+    }
+  });
+
+  submitBtn?.addEventListener("click", async () => {
+    if (!isAuthor || !inputTitle || !inputContent) return;
+    const title = inputTitle.value.trim();
+    const content = inputContent.value.trim();
+    if (!title || !content) {
+      alert("请填写词条标题与正文内容。");
+      return;
+    }
+    addDraftTagFromInput();
+
+    submitBtn.disabled = true;
+    const now = new Date().toISOString();
+    const payload = {
+      title,
+      content,
+      tags: draftTags,
+      is_pinned: Boolean(inputPinned?.checked),
+      updated_at: now,
+    };
+
+    try {
+      await syncTagsToTable(draftTags);
+      if (editingId) {
+        const { error } = await supabase.from("private_wiki").update(payload).eq("id", editingId);
+        if (error) throw error;
+        expandedIds.add(editingId);
+      } else {
+        const { data, error } = await supabase.from("private_wiki").insert(payload).select("id").single();
+        if (error) throw error;
+        if (data?.id) expandedIds.add(data.id);
+      }
+      resetComposer();
+      composer?.classList.add("hidden");
+      await loadWikiData();
+    } catch (err: any) {
+      alert("保存失败: " + (err.message || err));
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  openTagManagerBtn?.addEventListener("click", () => {
+    renderTagManagerList();
+    tagManagerModal?.classList.remove("hidden");
+  });
+
+  const closeTagModal = () => tagManagerModal?.classList.add("hidden");
+  tagManagerCloseBtn?.addEventListener("click", closeTagModal);
+  tagManagerCloseIconBtn?.addEventListener("click", closeTagModal);
+  tagManagerModal?.addEventListener("click", (e) => {
+    if (e.target === tagManagerModal) closeTagModal();
+  });
+
+  const handleCreateWikiTag = async () => {
+    if (!tagManagerNewInput) return;
+    const name = tagManagerNewInput.value.trim().replace(/^#+/, "");
+    if (!name) return;
+    if (allWikiTags.includes(name)) {
+      tagManagerNewInput.value = "";
+      return;
+    }
+    const { error } = await supabase.from("daily_tags").insert({ name, type: "wiki" });
+    if (error) {
+      alert("添加标签失败: " + error.message);
+      return;
+    }
+    tagManagerNewInput.value = "";
+    await loadWikiData();
+    renderTagManagerList();
+  };
+
+  tagManagerAddBtn?.addEventListener("click", handleCreateWikiTag);
+  tagManagerNewInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleCreateWikiTag();
+    }
+  });
+
+  // Init auth
+  supabase.auth.getSession().then(({ data }) => {
+    handleAuthState(data.session?.user ?? null);
+  });
+  supabase.auth.onAuthStateChange((_event, session) => {
+    handleAuthState(session?.user ?? null);
+  });
+</script>
+
