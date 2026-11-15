@@ -1211,59 +1211,59 @@
 </script>
 
 <style is:global>
-  /* 与 Daily Notes 正文字号 (text-sm / 0.875rem) 保持一致 */
-  .wiki-prose {
+  /* 与 Daily Notes 正文字号 (text-sm / 0.875rem) 保持一致，使用 .prose.wiki-prose 提高优先级覆盖 global.css */
+  .prose.wiki-prose {
     font-size: 0.875rem;
     line-height: 1.625;
     color: #262626;
   }
 
-  .wiki-prose h1 {
+  .prose.wiki-prose h1 {
     font-size: 1.125rem;
     margin-top: 1.25rem;
     margin-bottom: 0.65rem;
   }
 
-  .wiki-prose h2 {
+  .prose.wiki-prose h2 {
     font-size: 1rem;
     margin-top: 1.15rem;
     margin-bottom: 0.5rem;
     padding-bottom: 0.3rem;
   }
 
-  .wiki-prose h3 {
+  .prose.wiki-prose h3 {
     font-size: 0.9375rem;
     margin-top: 0.9rem;
     margin-bottom: 0.4rem;
   }
 
-  .wiki-prose h4 {
+  .prose.wiki-prose h4 {
     font-size: 0.875rem;
     margin-top: 0.75rem;
     margin-bottom: 0.35rem;
   }
 
-  .wiki-prose > :first-child {
+  .prose.wiki-prose > :first-child {
     margin-top: 0;
   }
 
-  .wiki-prose p {
+  .prose.wiki-prose p {
     margin-bottom: 0.75rem;
     line-height: 1.625;
   }
 
-  .wiki-prose ul,
-  .wiki-prose ol {
+  .prose.wiki-prose ul,
+  .prose.wiki-prose ol {
     margin-top: 0.35rem;
     margin-bottom: 0.75rem;
   }
 
-  .wiki-prose li {
+  .prose.wiki-prose li {
     margin-bottom: 0.25rem;
   }
 
-  .wiki-prose pre,
-  .wiki-prose table {
+  .prose.wiki-prose pre,
+  .prose.wiki-prose table {
     font-size: 0.8125rem;
   }
 </style>
