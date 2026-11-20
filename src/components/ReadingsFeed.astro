@@ -98,7 +98,10 @@
 
     <!-- 3. 核心思考 / 要点笔记 (多行) -->
     <div class="space-y-1">
-      <label for="readings-input-summary" class="block text-[11px] text-neutral-500">我的精读笔记与思考 (Notes) *</label>
+      <div class="flex items-center justify-between text-[11px] text-neutral-500">
+        <label for="readings-input-summary">我的精读笔记与思考 (Notes) *</label>
+        <span class="text-[10px] text-neutral-400">支持 Markdown 排版</span>
+      </div>
       <textarea
         id="readings-input-summary"
         rows="4"
@@ -287,6 +290,7 @@
 
 <script>
   import { supabase, AUTHOR_GITHUB } from "../utils/supabase";
+  import { renderMarkdown } from "../utils/markdown";
 
   interface ReadingItem {
     id: string;
@@ -337,6 +341,7 @@
 
   let editingReadingId: string | null = null;
   let draftTags: string[] = [];
+  const expandedReadingIds = new Set<string>();
 
   const filterBar = document.getElementById("readings-filter-bar");
   const filterAllBtn = document.getElementById("readings-filter-all-btn");
@@ -452,17 +457,9 @@
     }
   }
 
-  // 内容换行与链接转义安全渲染
+  // Markdown 安全渲染（支持标题、列表、代码块、表格与自动识别裸链接）
   function formatSummaryText(text: string): string {
-    const clean = (text || "").trim();
-    const escaped = clean
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-    return escaped.replace(
-      /(https?:\/\/[^\s]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-neutral-900 underline decoration-neutral-300 hover:decoration-neutral-900 underline-offset-2 break-all">$1</a>'
-    );
+    return renderMarkdown((text || "").trim(), { autoLinkUrls: true });
   }
 
   // 提取 Hostname 兜底显示
@@ -484,6 +481,7 @@
     const host = getHostname(item.url);
     const sourceLabel = item.source?.trim() || host || "External Article";
     const tags = (item.tags || []).filter((t) => Boolean(t.trim()));
+    const isNotesExpanded = expandedReadingIds.has(item.id);
 
     card.innerHTML = `
       <!-- 卡片头部: 来源标识 + 日期 + 复制链接 + 博主操作 -->
@@ -537,15 +535,20 @@
         </h3>
       </div>
 
-      <!-- 文章标题下方的横线分割线与 Notes 区域 -->
-      <div class="border-t border-neutral-200 pt-3 space-y-2">
-        <!-- Notes 标题 (小一号 text-xs、font-light 细体、浅灰) -->
-        <div class="text-xs font-light text-neutral-400 font-mono tracking-wide select-none">
-          Notes
-        </div>
+      <!-- 文章标题下方的横线分割线与 Notes 折叠区 -->
+      <div class="border-t border-neutral-200 pt-2.5 space-y-2">
+        <!-- > Notes 折叠触发行 -->
+        <button
+          type="button"
+          class="btn-toggle-notes w-full text-left inline-flex items-center space-x-1 text-xs font-light ${isNotesExpanded ? "text-neutral-700" : "text-neutral-400"} hover:text-neutral-800 font-mono tracking-wide transition-colors cursor-pointer select-none"
+          aria-expanded="${isNotesExpanded ? "true" : "false"}"
+        >
+          <i class="notes-caret ph ${isNotesExpanded ? "ph-caret-down" : "ph-caret-right"} text-[11px]"></i>
+          <span>Notes</span>
+        </button>
 
-        <!-- 总结正文 (无缩进、无边框、自然段落排版) -->
-        <div class="text-xs sm:text-[13px] text-neutral-700 leading-relaxed font-sans whitespace-pre-wrap break-words text-left">${formatSummaryText(item.summary)}</div>
+        <!-- 总结正文 (Markdown 渲染，默认折叠，点击 Notes 展开/收起) -->
+        <div class="notes-body ${isNotesExpanded ? "block" : "hidden"} prose compact-prose max-w-none font-sans break-words text-left">${formatSummaryText(item.summary)}</div>
       </div>
 
       <!-- 标签池 -->
@@ -571,6 +574,27 @@
           : ""
       }
     `;
+
+    // 绑定 Notes 折叠展开切换
+    const toggleNotesBtn = card.querySelector(".btn-toggle-notes");
+    const notesCaret = card.querySelector(".notes-caret");
+    const notesBody = card.querySelector(".notes-body");
+    toggleNotesBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const willExpand = !expandedReadingIds.has(item.id);
+      if (willExpand) {
+        expandedReadingIds.add(item.id);
+      } else {
+        expandedReadingIds.delete(item.id);
+      }
+      toggleNotesBtn.setAttribute("aria-expanded", willExpand ? "true" : "false");
+      toggleNotesBtn.classList.toggle("text-neutral-700", willExpand);
+      toggleNotesBtn.classList.toggle("text-neutral-400", !willExpand);
+      notesCaret?.classList.toggle("ph-caret-down", willExpand);
+      notesCaret?.classList.toggle("ph-caret-right", !willExpand);
+      notesBody?.classList.toggle("hidden", !willExpand);
+      notesBody?.classList.toggle("block", willExpand);
+    });
 
     // 绑定复制 URL 逻辑
     const copyBtn = card.querySelector(".btn-copy-url");

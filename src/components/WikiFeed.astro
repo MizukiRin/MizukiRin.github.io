@@ -104,9 +104,40 @@
         <div id="wiki-suggested-tags" class="flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-400"></div>
       </div>
 
+      <!-- 关联词条多选栏 -->
+      <div id="wiki-related-picker" class="space-y-2 relative">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold text-neutral-700">关联词条（可选）</span>
+          <span class="text-[10px] text-neutral-400">可搜索多选，双向可见跳转</span>
+        </div>
+        <div id="wiki-draft-related" class="flex flex-wrap gap-1.5 empty:hidden"></div>
+        <div class="relative">
+          <i class="ph ph-link absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs"></i>
+          <input
+            id="wiki-related-search-input"
+            type="text"
+            placeholder="搜索并选择要关联的词条（支持按标题或 #标签 过滤）..."
+            class="w-full pl-8 pr-8 py-1.5 bg-neutral-50/70 border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-800 text-xs"
+            autocomplete="off"
+          />
+          <button
+            id="wiki-related-toggle-btn"
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+            title="展开/收起词条候选列表"
+          >
+            <i class="ph ph-caret-down text-xs"></i>
+          </button>
+          <div
+            id="wiki-related-dropdown"
+            class="hidden absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-neutral-200 rounded-sm shadow-md max-h-48 overflow-y-auto divide-y divide-neutral-100 text-xs"
+          ></div>
+        </div>
+      </div>
+
       <!-- Markdown 编辑 / 预览切换 -->
       <div class="space-y-2">
-        <div class="flex items-center justify-between border-b border-neutral-100 pb-1.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-1.5">
           <div class="flex items-center space-x-1">
             <button
               id="wiki-tab-edit"
@@ -122,28 +153,52 @@
             >
               实时预览
             </button>
+            <button
+              id="wiki-upload-image-btn"
+              type="button"
+              class="inline-flex items-center space-x-1 px-2 py-1 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+              title="上传图片并插入 Markdown（也支持直接在编辑区粘贴或拖拽图片）"
+            >
+              <i class="ph ph-image text-xs"></i>
+              <span>插入图片</span>
+            </button>
+            <input id="wiki-image-input" type="file" accept="image/*" multiple class="hidden" />
+            <span id="wiki-upload-status" class="hidden text-[10px] text-neutral-500 pl-1">上传图片中...</span>
           </div>
-          <span class="text-[10px] text-neutral-400">支持 Markdown、[[词条]] 关联跳转 (Ctrl+Enter 保存)</span>
+          <span class="text-[10px] text-neutral-400">支持 Markdown、图片粘贴/拖拽 (Ctrl+Enter 保存)</span>
         </div>
 
-        <div class="relative">
-          <textarea
-            id="wiki-input-content"
-            rows="10"
-            placeholder="使用 Markdown 记录要点、对比表格、SQL/命令片段；输入 [[ 可关联其他词条..."
-            class="w-full p-3 bg-neutral-50/70 border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-800 font-mono text-xs leading-relaxed resize-y"
-          ></textarea>
+        <div id="wiki-edit-pane" class="space-y-3">
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <label for="wiki-input-summary" class="text-[11px] font-semibold text-neutral-700">核心速览</label>
+              <span class="text-[10px] text-neutral-400">卡片展开时直接展示</span>
+            </div>
+            <textarea
+              id="wiki-input-summary"
+              rows="5"
+              placeholder="记录核心结论、一句话对比、常用参数速查..."
+              class="w-full p-3 bg-neutral-50/70 border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-800 font-mono text-xs leading-relaxed resize-y"
+            ></textarea>
+          </div>
 
-          <!-- [[ 关联词条候选菜单 -->
-          <div
-            id="wiki-link-suggest-menu"
-            class="hidden absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-neutral-200 rounded-sm shadow-md max-h-52 overflow-y-auto divide-y divide-neutral-100 text-xs"
-          ></div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <label for="wiki-input-detail" class="text-[11px] font-semibold text-neutral-700">详细明细（可选）</label>
+              <span class="text-[10px] text-neutral-400">查看时默认折叠，点击后二次展开</span>
+            </div>
+            <textarea
+              id="wiki-input-detail"
+              rows="8"
+              placeholder="记录完整步骤、长代码块、踩坑截图、背景补充（可选）..."
+              class="w-full p-3 bg-neutral-50/70 border border-neutral-200 rounded-sm focus:outline-none focus:border-neutral-500 text-neutral-800 font-mono text-xs leading-relaxed resize-y"
+            ></textarea>
+          </div>
         </div>
 
         <div
           id="wiki-preview-pane"
-          class="hidden min-h-[200px] max-h-[420px] overflow-y-auto p-4 bg-neutral-50/40 border border-neutral-200 rounded-sm prose wiki-prose max-w-none font-sans"
+          class="hidden min-h-[200px] max-h-[420px] overflow-y-auto p-4 bg-neutral-50/40 border border-neutral-200 rounded-sm prose compact-prose max-w-none font-sans"
         ></div>
       </div>
 
@@ -215,7 +270,8 @@
 </section>
 
 <script>
-  import { supabase, AUTHOR_GITHUB } from "../utils/supabase";
+  import { supabase, AUTHOR_GITHUB, BUCKET_NAME } from "../utils/supabase";
+  import { escapeHtml, renderMarkdown } from "../utils/markdown";
 
   interface WikiEntry {
     id: string;
@@ -224,6 +280,7 @@
     title: string;
     content: string;
     tags: string[];
+    related_ids?: string[];
     is_pinned: boolean;
   }
 
@@ -234,7 +291,27 @@
   let searchQuery = "";
   let editingId: string | null = null;
   let draftTags: string[] = [];
+  let draftRelatedIds: string[] = [];
   const expandedIds = new Set<string>();
+  const expandedDetailIds = new Set<string>();
+  const WIKI_DETAIL_MARKER = "\n<!-- wiki:detail -->\n";
+
+  function splitWikiContent(raw: string): { summary: string; detail: string } {
+    const match = raw.match(/\r?\n?<!--\s*wiki:detail\s*-->\r?\n?/);
+    if (!match || match.index === undefined) {
+      return { summary: raw, detail: "" };
+    }
+    return {
+      summary: raw.slice(0, match.index).trimEnd(),
+      detail: raw.slice(match.index + match[0].length).trimStart(),
+    };
+  }
+
+  function combineWikiContent(summary: string, detail: string): string {
+    const s = summary.trim();
+    const d = detail.trim();
+    return d ? `${s}${WIKI_DETAIL_MARKER}${d}` : s;
+  }
 
   // DOM 引用
   const lockScreen = document.getElementById("wiki-lock-screen");
@@ -256,15 +333,22 @@
   const addTagBtn = document.getElementById("wiki-add-tag-btn");
   const draftTagsEl = document.getElementById("wiki-draft-tags");
   const suggestedTagsEl = document.getElementById("wiki-suggested-tags");
+  const relatedPicker = document.getElementById("wiki-related-picker");
+  const draftRelatedEl = document.getElementById("wiki-draft-related");
+  const relatedSearchInput = document.getElementById("wiki-related-search-input") as HTMLInputElement | null;
+  const relatedToggleBtn = document.getElementById("wiki-related-toggle-btn");
+  const relatedDropdown = document.getElementById("wiki-related-dropdown");
   const tabEditBtn = document.getElementById("wiki-tab-edit");
   const tabPreviewBtn = document.getElementById("wiki-tab-preview");
-  const inputContent = document.getElementById("wiki-input-content") as HTMLTextAreaElement | null;
-  const linkSuggestMenu = document.getElementById("wiki-link-suggest-menu");
+  const uploadImageBtn = document.getElementById("wiki-upload-image-btn") as HTMLButtonElement | null;
+  const imageInput = document.getElementById("wiki-image-input") as HTMLInputElement | null;
+  const uploadStatus = document.getElementById("wiki-upload-status");
+  const editPane = document.getElementById("wiki-edit-pane");
+  const inputSummary = document.getElementById("wiki-input-summary") as HTMLTextAreaElement | null;
+  const inputDetail = document.getElementById("wiki-input-detail") as HTMLTextAreaElement | null;
   const previewPane = document.getElementById("wiki-preview-pane");
 
-  let suggestCandidates: WikiEntry[] = [];
-  let suggestActiveIndex = 0;
-  let suggestTriggerStart = -1;
+  let activeEditorTextarea: HTMLTextAreaElement | null = inputSummary;
   const cancelBtn = document.getElementById("wiki-cancel-btn");
   const submitBtn = document.getElementById("wiki-submit-btn") as HTMLButtonElement | null;
 
@@ -277,191 +361,6 @@
   const tagManagerList = document.getElementById("wiki-tag-manager-list");
   const tagManagerTotalCount = document.getElementById("wiki-tag-manager-total-count");
 
-  function escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
-
-  function sanitizeUrl(url: string): string {
-    const trimmed = url.trim();
-    if (/^(https?:\/\/|\/|#)/i.test(trimmed)) return trimmed;
-    return "#";
-  }
-
-  function formatInlineMarkdown(raw: string): string {
-    const codeTokens: string[] = [];
-    let text = raw.replace(/`([^`]+)`/g, (_m, code) => {
-      const idx = codeTokens.length;
-      codeTokens.push(`<code>${escapeHtml(code)}</code>`);
-      return `@@CODE_${idx}@@`;
-    });
-
-    const wikiTokens: string[] = [];
-    text = text.replace(/\[\[([^\]|\n]+?)(?:\|([^\]\n]+?))?\]\]/g, (_m, rawTitle, rawAlias) => {
-      const targetTitle = rawTitle.trim();
-      const displayLabel = escapeHtml((rawAlias || rawTitle).trim());
-      const matched = allEntries.find(
-        (e) => e.title.trim().toLowerCase() === targetTitle.toLowerCase()
-      );
-      const idx = wikiTokens.length;
-      if (matched) {
-        wikiTokens.push(
-          `<button type="button" data-wiki-jump="${matched.id}" class="inline-flex items-center gap-0.5 text-neutral-900 underline decoration-neutral-400 decoration-dashed underline-offset-4 hover:decoration-neutral-900 hover:bg-neutral-100 px-1 rounded-xs transition-colors cursor-pointer font-medium" title="跳转到词条：${escapeHtml(matched.title)}"><span>${displayLabel}</span><i class="ph ph-arrow-up-right text-[11px] text-neutral-500"></i></button>`
-        );
-      } else {
-        wikiTokens.push(
-          `<span class="text-neutral-400 underline decoration-dotted underline-offset-4 cursor-help" title="未找到词条：${escapeHtml(targetTitle)}">[[${displayLabel}]]</span>`
-        );
-      }
-      return `@@WIKILINK_${idx}@@`;
-    });
-
-    text = escapeHtml(text);
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
-      return `<a href="${escapeHtml(sanitizeUrl(url))}" target="_blank" rel="noopener noreferrer">${label}</a>`;
-    });
-    text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    text = text.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-    text = text.replace(/~~([^~]+)~~/g, "<del>$1</del>");
-
-    text = text.replace(/@@WIKILINK_(\d+)@@/g, (_m, idx) => wikiTokens[Number(idx)] || "");
-    text = text.replace(/@@CODE_(\d+)@@/g, (_m, idx) => codeTokens[Number(idx)] || "");
-    return text;
-  }
-
-  /** Render sanitized Markdown subset (headings, lists, quotes, code blocks, GFM tables) to HTML. */
-  function renderMarkdown(md: string): string {
-    const lines = md.replace(/\r\n/g, "\n").split("\n");
-    const html: string[] = [];
-    let i = 0;
-
-    while (i < lines.length) {
-      const line = lines[i];
-
-      // Fenced code block
-      const fenceMatch = line.match(/^```(.*)$/);
-      if (fenceMatch) {
-        const lang = fenceMatch[1].trim();
-        const codeLines: string[] = [];
-        i++;
-        while (i < lines.length && !lines[i].startsWith("```")) {
-          codeLines.push(lines[i]);
-          i++;
-        }
-        i++; // skip closing fence
-        const langAttr = lang ? ` data-lang="${escapeHtml(lang)}"` : "";
-        html.push(`<pre${langAttr}><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
-        continue;
-      }
-
-      if (!line.trim()) {
-        i++;
-        continue;
-      }
-
-      // Horizontal rule
-      if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line.trim())) {
-        html.push("<hr />");
-        i++;
-        continue;
-      }
-
-      // Headings
-      const headingMatch = line.match(/^(#{1,4})\s+(.*)$/);
-      if (headingMatch) {
-        const level = headingMatch[1].length;
-        html.push(`<h${level}>${formatInlineMarkdown(headingMatch[2])}</h${level}>`);
-        i++;
-        continue;
-      }
-
-      // GFM Table
-      if (
-        line.includes("|") &&
-        i + 1 < lines.length &&
-        /^\s*\|?[\s:-]+\|[\s|:-]*$/.test(lines[i + 1])
-      ) {
-        const parseRow = (row: string) =>
-          row
-            .trim()
-            .replace(/^\|/, "")
-            .replace(/\|$/, "")
-            .split("|")
-            .map((cell) => formatInlineMarkdown(cell.trim()));
-
-        const headers = parseRow(line);
-        i += 2;
-        const rows: string[][] = [];
-        while (i < lines.length && lines[i].includes("|") && lines[i].trim() !== "") {
-          rows.push(parseRow(lines[i]));
-          i++;
-        }
-        const thead = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>`;
-        const tbody = rows.length
-          ? `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`
-          : "";
-        html.push(`<table>${thead}${tbody}</table>`);
-        continue;
-      }
-
-      // Blockquote
-      if (line.trimStart().startsWith(">")) {
-        const quoteLines: string[] = [];
-        while (i < lines.length && lines[i].trimStart().startsWith(">")) {
-          quoteLines.push(lines[i].replace(/^\s*>\s?/, ""));
-          i++;
-        }
-        html.push(`<blockquote><p>${quoteLines.map(formatInlineMarkdown).join("<br />")}</p></blockquote>`);
-        continue;
-      }
-
-      // Unordered list
-      if (/^\s*[-*+]\s+/.test(line)) {
-        const items: string[] = [];
-        while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
-          items.push(`<li>${formatInlineMarkdown(lines[i].replace(/^\s*[-*+]\s+/, ""))}</li>`);
-          i++;
-        }
-        html.push(`<ul>${items.join("")}</ul>`);
-        continue;
-      }
-
-      // Ordered list
-      if (/^\s*\d+\.\s+/.test(line)) {
-        const items: string[] = [];
-        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
-          items.push(`<li>${formatInlineMarkdown(lines[i].replace(/^\s*\d+\.\s+/, ""))}</li>`);
-          i++;
-        }
-        html.push(`<ol>${items.join("")}</ol>`);
-        continue;
-      }
-
-      // Paragraph
-      const paraLines: string[] = [];
-      while (
-        i < lines.length &&
-        lines[i].trim() !== "" &&
-        !lines[i].startsWith("```") &&
-        !/^(#{1,4})\s+/.test(lines[i]) &&
-        !/^\s*[-*+]\s+/.test(lines[i]) &&
-        !/^\s*\d+\.\s+/.test(lines[i]) &&
-        !lines[i].trimStart().startsWith(">") &&
-        !/^(\*{3,}|-{3,}|_{3,})\s*$/.test(lines[i].trim())
-      ) {
-        paraLines.push(formatInlineMarkdown(lines[i]));
-        i++;
-      }
-      html.push(`<p>${paraLines.join("<br />")}</p>`);
-    }
-
-    return html.join("\n");
-  }
-
   function formatDateShort(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "";
@@ -472,18 +371,39 @@
   }
 
   function setPreviewMode(preview: boolean) {
-    if (!inputContent || !previewPane || !tabEditBtn || !tabPreviewBtn) return;
+    if (!editPane || !previewPane || !tabEditBtn || !tabPreviewBtn) return;
     if (preview) {
-      previewPane.innerHTML = inputContent.value.trim()
-        ? renderMarkdown(inputContent.value)
-        : '<p class="text-neutral-400 italic">暂无内容可预览</p>';
-      inputContent.classList.add("hidden");
+      const summaryVal = inputSummary?.value.trim() || "";
+      const detailVal = inputDetail?.value.trim() || "";
+      if (!summaryVal && !detailVal) {
+        previewPane.innerHTML = '<p class="text-neutral-400 italic">暂无内容可预览</p>';
+      } else {
+        const parts: string[] = [];
+        if (summaryVal) {
+          parts.push(renderMarkdown(summaryVal, { autoLinkUrls: true }));
+        }
+        if (detailVal) {
+          parts.push(`
+            <div class="mt-3 pt-2">
+              <div class="inline-flex items-center space-x-1 text-xs font-mono text-neutral-400 mb-2">
+                <i class="ph ph-caret-down text-[11px]"></i>
+                <span>Details</span>
+              </div>
+              <div class="pl-3 border-l-2 border-neutral-200">
+                ${renderMarkdown(detailVal, { autoLinkUrls: true })}
+              </div>
+            </div>
+          `);
+        }
+        previewPane.innerHTML = parts.join("");
+      }
+      editPane.classList.add("hidden");
       previewPane.classList.remove("hidden");
       tabPreviewBtn.className = "px-2.5 py-1 rounded-sm bg-neutral-900 text-white transition-colors cursor-pointer";
       tabEditBtn.className = "px-2.5 py-1 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer";
     } else {
       previewPane.classList.add("hidden");
-      inputContent.classList.remove("hidden");
+      editPane.classList.remove("hidden");
       tabEditBtn.className = "px-2.5 py-1 rounded-sm bg-neutral-900 text-white transition-colors cursor-pointer";
       tabPreviewBtn.className = "px-2.5 py-1 rounded-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer";
     }
@@ -556,29 +476,130 @@
     inputTag.value = "";
   }
 
+  /** Render selected related wiki entry pills in the composer. */
+  function renderDraftRelated() {
+    if (!draftRelatedEl) return;
+    const validIds = draftRelatedIds.filter((id) => id !== editingId && allEntries.some((e) => e.id === id));
+    draftRelatedIds = validIds;
+    draftRelatedEl.innerHTML = validIds
+      .map((id) => {
+        const entry = allEntries.find((e) => e.id === id);
+        if (!entry) return "";
+        return `
+          <span class="inline-flex items-center space-x-1 px-2 py-0.5 bg-neutral-100 border border-neutral-300 text-neutral-800 rounded-sm text-[11px] max-w-full">
+            <i class="ph ph-link text-[10px] text-neutral-500 shrink-0"></i>
+            <span class="truncate max-w-[200px]">${escapeHtml(entry.title)}</span>
+            <button type="button" data-remove-related="${id}" class="text-neutral-400 hover:text-neutral-900 cursor-pointer shrink-0">×</button>
+          </span>
+        `;
+      })
+      .join("");
+
+    draftRelatedEl.querySelectorAll("[data-remove-related]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-remove-related");
+        draftRelatedIds = draftRelatedIds.filter((x) => x !== targetId);
+        renderDraftRelated();
+        if (relatedDropdown && !relatedDropdown.classList.contains("hidden")) {
+          renderRelatedDropdown();
+        }
+      });
+    });
+  }
+
+  /** Render multi-select candidate dropdown for linking related wiki entries. */
+  function renderRelatedDropdown() {
+    if (!relatedDropdown) return;
+    const q = (relatedSearchInput?.value || "").trim().toLowerCase().replace(/^#/, "");
+    const candidates = allEntries.filter((e) => {
+      if (e.id === editingId) return false;
+      if (!q) return true;
+      const inTitle = e.title.toLowerCase().includes(q);
+      const inTags = (e.tags || []).some((t) => t.toLowerCase().includes(q));
+      return inTitle || inTags;
+    });
+
+    if (candidates.length === 0) {
+      relatedDropdown.innerHTML = `<div class="px-3 py-2 text-neutral-400 font-mono">没有可选词条</div>`;
+      return;
+    }
+
+    relatedDropdown.innerHTML = candidates
+      .slice(0, 20)
+      .map((entry) => {
+        const selected = draftRelatedIds.includes(entry.id);
+        const tagsPreview = (entry.tags || [])
+          .slice(0, 2)
+          .map((t) => `<span class="text-[10px] text-neutral-400">#${escapeHtml(t)}</span>`)
+          .join(" ");
+        return `
+          <button
+            type="button"
+            data-toggle-related-option="${entry.id}"
+            class="w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors cursor-pointer ${selected ? "bg-neutral-100 text-neutral-900" : "hover:bg-neutral-50 text-neutral-700"}"
+          >
+            <div class="flex items-center space-x-2 min-w-0">
+              <i class="ph ${selected ? "ph-check-square text-neutral-900" : "ph-square text-neutral-400"} text-sm shrink-0"></i>
+              <span class="truncate ${selected ? "font-medium" : ""}">${escapeHtml(entry.title)}</span>
+            </div>
+            <span class="shrink-0 flex items-center gap-1 font-mono">${tagsPreview}</span>
+          </button>
+        `;
+      })
+      .join("");
+
+    relatedDropdown.querySelectorAll("[data-toggle-related-option]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute("data-toggle-related-option");
+        if (!id) return;
+        if (draftRelatedIds.includes(id)) {
+          draftRelatedIds = draftRelatedIds.filter((x) => x !== id);
+        } else {
+          draftRelatedIds = [...draftRelatedIds, id];
+        }
+        renderDraftRelated();
+        renderRelatedDropdown();
+      });
+    });
+  }
+
   function resetComposer() {
     editingId = null;
     draftTags = [];
+    draftRelatedIds = [];
     if (composerModeLabel) composerModeLabel.textContent = "新建知识词条";
     if (inputTitle) inputTitle.value = "";
     if (inputTag) inputTag.value = "";
-    if (inputContent) inputContent.value = "";
+    if (relatedSearchInput) relatedSearchInput.value = "";
+    relatedDropdown?.classList.add("hidden");
+    if (inputSummary) inputSummary.value = "";
+    if (inputDetail) inputDetail.value = "";
     if (inputPinned) inputPinned.checked = false;
+    activeEditorTextarea = inputSummary;
     setPreviewMode(false);
     renderDraftTags();
     renderSuggestedTags();
+    renderDraftRelated();
   }
 
   function openComposerForEdit(entry: WikiEntry) {
     editingId = entry.id;
     draftTags = [...(entry.tags || [])];
+    draftRelatedIds = (entry.related_ids || []).filter((id) => id !== entry.id);
+    const { summary, detail } = splitWikiContent(entry.content);
     if (composerModeLabel) composerModeLabel.textContent = "编辑知识词条";
     if (inputTitle) inputTitle.value = entry.title;
-    if (inputContent) inputContent.value = entry.content;
+    if (relatedSearchInput) relatedSearchInput.value = "";
+    relatedDropdown?.classList.add("hidden");
+    if (inputSummary) inputSummary.value = summary;
+    if (inputDetail) inputDetail.value = detail;
     if (inputPinned) inputPinned.checked = Boolean(entry.is_pinned);
+    activeEditorTextarea = inputSummary;
     setPreviewMode(false);
     renderDraftTags();
     renderSuggestedTags();
+    renderDraftRelated();
     composer?.classList.remove("hidden");
     inputTitle?.focus();
     composer?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -656,6 +677,11 @@
     wikiList.innerHTML = items
       .map((entry) => {
         const isExpanded = expandedIds.has(entry.id);
+        const isDetailExpanded = expandedDetailIds.has(entry.id);
+        const { summary, detail } = splitWikiContent(entry.content);
+        const hasDetail = detail.trim().length > 0;
+        const q = searchQuery.trim().toLowerCase();
+        const detailMatchesQuery = Boolean(q && hasDetail && detail.toLowerCase().includes(q));
         const tagsHtml = (entry.tags || [])
           .map(
             (t) =>
@@ -663,13 +689,84 @@
           )
           .join("");
 
+        const detailSectionHtml = hasDetail
+          ? `
+              <div class="pt-1 space-y-2">
+                <button
+                  type="button"
+                  data-toggle-detail="${entry.id}"
+                  class="inline-flex items-center space-x-1 text-xs font-mono ${isDetailExpanded ? "text-neutral-700" : "text-neutral-400"} hover:text-neutral-900 transition-colors cursor-pointer select-none"
+                >
+                  <i class="ph ${isDetailExpanded ? "ph-caret-down" : "ph-caret-right"} text-[11px]"></i>
+                  <span>Details</span>
+                  ${!isDetailExpanded && detailMatchesQuery ? '<span class="ml-1.5 text-[10px] text-neutral-400">(含匹配)</span>' : ""}
+                </button>
+                <div class="${isDetailExpanded ? "block" : "hidden"} pl-3 border-l-2 border-neutral-200 prose compact-prose max-w-none font-sans">
+                  ${renderMarkdown(detail, { autoLinkUrls: true })}
+                </div>
+              </div>
+            `
+          : "";
+
+        const directRelatedIds = new Set((entry.related_ids || []).filter((id) => id !== entry.id));
+        const directLinks = Array.from(directRelatedIds)
+          .map((id) => allEntries.find((x) => x.id === id))
+          .filter((x): x is WikiEntry => Boolean(x));
+        const backLinks = allEntries.filter(
+          (other) =>
+            other.id !== entry.id &&
+            !directRelatedIds.has(other.id) &&
+            (other.related_ids || []).includes(entry.id)
+        );
+
+        const renderRelationPills = (list: WikiEntry[], iconClass: string) =>
+          list
+            .map(
+              (target) => `
+              <button
+                type="button"
+                data-wiki-jump="${target.id}"
+                class="inline-flex items-center space-x-1 px-2 py-0.5 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 hover:border-neutral-400 text-neutral-700 hover:text-neutral-900 rounded-sm text-[11px] font-mono transition-colors cursor-pointer"
+                title="点击展开并跳转到：${escapeHtml(target.title)}"
+              >
+                <i class="ph ${iconClass} text-[11px] text-neutral-500"></i>
+                <span class="truncate max-w-[220px]">${escapeHtml(target.title)}</span>
+              </button>
+            `
+            )
+            .join("");
+
+        const relationsSectionHtml =
+          directLinks.length > 0 || backLinks.length > 0
+            ? `
+              <div class="pt-2.5 border-t border-neutral-100 space-y-1.5 text-[11px] font-mono">
+                ${
+                  directLinks.length > 0
+                    ? `<div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-neutral-400 shrink-0">关联词条:</span>
+                        ${renderRelationPills(directLinks, "ph-arrow-up-right")}
+                      </div>`
+                    : ""
+                }
+                ${
+                  backLinks.length > 0
+                    ? `<div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-neutral-400 shrink-0">被关联于:</span>
+                        ${renderRelationPills(backLinks, "ph-arrow-u-down-left")}
+                      </div>`
+                    : ""
+                }
+              </div>
+            `
+            : "";
+
         return `
           <article data-wiki-card="${entry.id}" class="bg-white border ${entry.is_pinned ? "border-neutral-300" : "border-neutral-200"} rounded-sm transition-all">
             <div data-toggle-entry="${entry.id}" class="flex items-start justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-neutral-50/70 transition-colors select-none">
               <div class="min-w-0 flex-1 space-y-1.5">
                 <div class="flex items-center space-x-2">
                   ${entry.is_pinned ? '<i class="ph-fill ph-push-pin text-neutral-700 text-xs shrink-0" title="已置顶"></i>' : ""}
-                  <h3 class="text-sm font-medium text-neutral-900 truncate">${escapeHtml(entry.title)}</h3>
+                  <h3 class="text-base font-medium text-neutral-900 leading-snug truncate">${escapeHtml(entry.title)}</h3>
                 </div>
                 <div class="flex flex-wrap items-center gap-1.5">
                   ${tagsHtml}
@@ -700,9 +797,11 @@
                   <span>删除</span>
                 </button>
               </div>
-              <div class="prose wiki-prose max-w-none font-sans">
-                ${renderMarkdown(entry.content)}
+              <div class="prose compact-prose max-w-none font-sans">
+                ${renderMarkdown(summary, { autoLinkUrls: true })}
               </div>
+              ${detailSectionHtml}
+              ${relationsSectionHtml}
             </div>
           </article>
         `;
@@ -718,6 +817,17 @@
         if (!id) return;
         if (expandedIds.has(id)) expandedIds.delete(id);
         else expandedIds.add(id);
+        renderWikiList();
+      });
+    });
+
+    wikiList.querySelectorAll("[data-toggle-detail]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute("data-toggle-detail");
+        if (!id) return;
+        if (expandedDetailIds.has(id)) expandedDetailIds.delete(id);
+        else expandedDetailIds.add(id);
         renderWikiList();
       });
     });
@@ -756,7 +866,9 @@
         const entry = allEntries.find((x) => x.id === id);
         if (!entry) return;
         try {
-          await navigator.clipboard.writeText(`# ${entry.title}\n\n${entry.content}`);
+          const { summary, detail } = splitWikiContent(entry.content);
+          const cleanMd = detail ? `${summary}\n\n---\n\n${detail}` : summary;
+          await navigator.clipboard.writeText(`# ${entry.title}\n\n${cleanMd}`);
           const span = btn.querySelector("span");
           if (span) {
             span.textContent = "已复制";
@@ -853,6 +965,7 @@
     allEntries = entriesRes.data || [];
     renderTagFilterBar();
     renderSuggestedTags();
+    renderDraftRelated();
     renderWikiList();
   }
 
@@ -976,6 +1089,7 @@
     if (composer && !composer.classList.contains("hidden")) {
       renderDraftTags();
       renderSuggestedTags();
+      renderDraftRelated();
       inputTitle?.focus();
     }
   });
@@ -996,136 +1110,150 @@
   tabEditBtn?.addEventListener("click", () => setPreviewMode(false));
   tabPreviewBtn?.addEventListener("click", () => setPreviewMode(true));
 
-  function hideLinkSuggestMenu() {
-    suggestCandidates = [];
-    suggestActiveIndex = 0;
-    suggestTriggerStart = -1;
-    linkSuggestMenu?.classList.add("hidden");
-  }
-
-  function insertSuggestedWikiLink(title: string) {
-    if (!inputContent || suggestTriggerStart < 0) return;
-    const cursor = inputContent.selectionStart;
-    const before = inputContent.value.slice(0, suggestTriggerStart);
-    const after = inputContent.value.slice(cursor);
-    const inserted = `[[${title}]]`;
-    inputContent.value = `${before}${inserted}${after}`;
-    const nextPos = before.length + inserted.length;
-    inputContent.selectionStart = inputContent.selectionEnd = nextPos;
-    hideLinkSuggestMenu();
-    inputContent.focus();
-  }
-
-  function renderLinkSuggestMenu() {
-    if (!linkSuggestMenu) return;
-    if (suggestCandidates.length === 0) {
-      linkSuggestMenu.innerHTML = `<div class="px-3 py-2 text-neutral-400 font-mono">没有匹配的词条</div>`;
-      linkSuggestMenu.classList.remove("hidden");
-      return;
-    }
-
-    linkSuggestMenu.innerHTML = suggestCandidates
-      .map((entry, idx) => {
-        const isActive = idx === suggestActiveIndex;
-        const tagsPreview = (entry.tags || [])
-          .slice(0, 2)
-          .map((t) => `<span class="text-[10px] text-neutral-400">#${escapeHtml(t)}</span>`)
-          .join(" ");
-        return `
-          <button
-            type="button"
-            data-suggest-entry-idx="${idx}"
-            class="w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors cursor-pointer ${isActive ? "bg-neutral-100 text-neutral-900" : "hover:bg-neutral-50 text-neutral-700"}"
-          >
-            <span class="truncate font-medium">${escapeHtml(entry.title)}</span>
-            <span class="shrink-0 flex items-center gap-1 font-mono">${tagsPreview}</span>
-          </button>
-        `;
-      })
-      .join("");
-
-    linkSuggestMenu.classList.remove("hidden");
-    linkSuggestMenu.querySelectorAll("[data-suggest-entry-idx]").forEach((btn) => {
-      btn.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        const idx = Number(btn.getAttribute("data-suggest-entry-idx"));
-        const target = suggestCandidates[idx];
-        if (target) insertSuggestedWikiLink(target.title);
-      });
-    });
-  }
-
-  function updateLinkSuggestFromCursor() {
-    if (!inputContent) return;
-    const cursor = inputContent.selectionStart;
-    const textBefore = inputContent.value.slice(0, cursor);
-    const match = textBefore.match(/\[\[([^\]\n]*)$/);
-    if (!match) {
-      hideLinkSuggestMenu();
-      return;
-    }
-    suggestTriggerStart = cursor - match[0].length;
-    const query = match[1].trim().toLowerCase();
-    suggestCandidates = allEntries
-      .filter((e) => e.id !== editingId && (!query || e.title.toLowerCase().includes(query)))
-      .slice(0, 8);
-    suggestActiveIndex = 0;
-    renderLinkSuggestMenu();
-  }
-
-  inputContent?.addEventListener("input", updateLinkSuggestFromCursor);
-  inputContent?.addEventListener("click", updateLinkSuggestFromCursor);
-  inputContent?.addEventListener("blur", () => {
-    setTimeout(hideLinkSuggestMenu, 120);
+  // 关联词条多选交互
+  relatedSearchInput?.addEventListener("focus", () => {
+    renderRelatedDropdown();
+    relatedDropdown?.classList.remove("hidden");
   });
 
-  inputContent?.addEventListener("keydown", (e) => {
-    const isMenuOpen = linkSuggestMenu && !linkSuggestMenu.classList.contains("hidden");
-    if (isMenuOpen) {
-      if (e.key === "ArrowDown" && suggestCandidates.length > 0) {
-        e.preventDefault();
-        suggestActiveIndex = (suggestActiveIndex + 1) % suggestCandidates.length;
-        renderLinkSuggestMenu();
-        return;
-      }
-      if (e.key === "ArrowUp" && suggestCandidates.length > 0) {
-        e.preventDefault();
-        suggestActiveIndex = (suggestActiveIndex - 1 + suggestCandidates.length) % suggestCandidates.length;
-        renderLinkSuggestMenu();
-        return;
-      }
-      if ((e.key === "Enter" || e.key === "Tab") && suggestCandidates.length > 0) {
-        e.preventDefault();
-        insertSuggestedWikiLink(suggestCandidates[suggestActiveIndex].title);
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        hideLinkSuggestMenu();
-        return;
-      }
-    }
+  relatedSearchInput?.addEventListener("input", () => {
+    renderRelatedDropdown();
+    relatedDropdown?.classList.remove("hidden");
+  });
 
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const start = inputContent.selectionStart;
-      const end = inputContent.selectionEnd;
-      inputContent.value = `${inputContent.value.slice(0, start)}  ${inputContent.value.slice(end)}`;
-      inputContent.selectionStart = inputContent.selectionEnd = start + 2;
-    } else if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      e.preventDefault();
-      submitBtn?.click();
+  relatedSearchInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      relatedDropdown?.classList.add("hidden");
+      relatedSearchInput.blur();
+    }
+  });
+
+  relatedToggleBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!relatedDropdown) return;
+    if (relatedDropdown.classList.contains("hidden")) {
+      renderRelatedDropdown();
+      relatedDropdown.classList.remove("hidden");
+      relatedSearchInput?.focus();
+    } else {
+      relatedDropdown.classList.add("hidden");
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!relatedPicker || !relatedDropdown) return;
+    if (!relatedPicker.contains(e.target as Node)) {
+      relatedDropdown.classList.add("hidden");
+    }
+  });
+
+  /** Upload image files to Supabase Storage and insert Markdown image syntax at active textarea cursor. */
+  async function uploadAndInsertWikiImages(files: File[], targetTextarea?: HTMLTextAreaElement | null) {
+    const textarea = targetTextarea || activeEditorTextarea || inputSummary;
+    const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+    if (imageFiles.length === 0 || !textarea) return;
+
+    if (uploadImageBtn) uploadImageBtn.disabled = true;
+    uploadStatus?.classList.remove("hidden");
+
+    const markdownSnippets: string[] = [];
+    try {
+      for (const file of imageFiles) {
+        const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+        const filePath = `wiki/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error } = await supabase.storage
+          .from(BUCKET_NAME)
+          .upload(filePath, file, { cacheControl: "31536000", upsert: false });
+        if (error) throw error;
+        const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+        const alt = file.name ? file.name.replace(/\.[^.]+$/, "") : "image";
+        markdownSnippets.push(`![${alt}](${data.publicUrl})`);
+      }
+
+      const start = textarea.selectionStart ?? textarea.value.length;
+      const end = textarea.selectionEnd ?? textarea.value.length;
+      const snippet = markdownSnippets.join("\n") + "\n";
+      textarea.value = `${textarea.value.slice(0, start)}${snippet}${textarea.value.slice(end)}`;
+      textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
+      textarea.focus();
+    } catch (err: any) {
+      alert("图片上传失败: " + (err.message || err));
+    } finally {
+      if (uploadImageBtn) uploadImageBtn.disabled = false;
+      uploadStatus?.classList.add("hidden");
+      if (imageInput) imageInput.value = "";
+    }
+  }
+
+  [inputSummary, inputDetail].forEach((textarea) => {
+    if (!textarea) return;
+    textarea.addEventListener("focus", () => {
+      activeEditorTextarea = textarea;
+    });
+    textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = `${textarea.value.slice(0, start)}  ${textarea.value.slice(end)}`;
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        submitBtn?.click();
+      }
+    });
+    textarea.addEventListener("paste", (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        uploadAndInsertWikiImages(files, textarea);
+      }
+    });
+    textarea.addEventListener("dragover", (e) => {
+      if (e.dataTransfer?.types.includes("Files")) {
+        e.preventDefault();
+      }
+    });
+    textarea.addEventListener("drop", (e) => {
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        uploadAndInsertWikiImages(imageFiles, textarea);
+      }
+    });
+  });
+
+  uploadImageBtn?.addEventListener("click", () => {
+    setPreviewMode(false);
+    imageInput?.click();
+  });
+
+  imageInput?.addEventListener("change", () => {
+    if (imageInput.files && imageInput.files.length > 0) {
+      uploadAndInsertWikiImages(Array.from(imageInput.files));
     }
   });
 
   submitBtn?.addEventListener("click", async () => {
-    if (!isAuthor || !inputTitle || !inputContent) return;
+    if (!isAuthor || !inputTitle || !inputSummary) return;
     const title = inputTitle.value.trim();
-    const content = inputContent.value.trim();
-    if (!title || !content) {
-      alert("请填写词条标题与正文内容。");
+    const summaryVal = inputSummary.value.trim();
+    const detailVal = inputDetail?.value.trim() || "";
+    if (!title || (!summaryVal && !detailVal)) {
+      alert("请填写词条标题与核心速览内容。");
       return;
     }
+    const content = combineWikiContent(summaryVal, detailVal);
     addDraftTagFromInput();
 
     submitBtn.disabled = true;
@@ -1134,6 +1262,7 @@
       title,
       content,
       tags: draftTags,
+      related_ids: draftRelatedIds,
       is_pinned: Boolean(inputPinned?.checked),
       updated_at: now,
     };
@@ -1209,62 +1338,4 @@
     handleAuthState(session?.user ?? null);
   });
 </script>
-
-<style is:global>
-  /* 与 Daily Notes 正文字号 (text-sm / 0.875rem) 保持一致，使用 .prose.wiki-prose 提高优先级覆盖 global.css */
-  .prose.wiki-prose {
-    font-size: 0.875rem;
-    line-height: 1.625;
-    color: #262626;
-  }
-
-  .prose.wiki-prose h1 {
-    font-size: 1.125rem;
-    margin-top: 1.25rem;
-    margin-bottom: 0.65rem;
-  }
-
-  .prose.wiki-prose h2 {
-    font-size: 1rem;
-    margin-top: 1.15rem;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.3rem;
-  }
-
-  .prose.wiki-prose h3 {
-    font-size: 0.9375rem;
-    margin-top: 0.9rem;
-    margin-bottom: 0.4rem;
-  }
-
-  .prose.wiki-prose h4 {
-    font-size: 0.875rem;
-    margin-top: 0.75rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .prose.wiki-prose > :first-child {
-    margin-top: 0;
-  }
-
-  .prose.wiki-prose p {
-    margin-bottom: 0.75rem;
-    line-height: 1.625;
-  }
-
-  .prose.wiki-prose ul,
-  .prose.wiki-prose ol {
-    margin-top: 0.35rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .prose.wiki-prose li {
-    margin-bottom: 0.25rem;
-  }
-
-  .prose.wiki-prose pre,
-  .prose.wiki-prose table {
-    font-size: 0.8125rem;
-  }
-</style>
 
