@@ -149,23 +149,43 @@
       </div>
     </div>
 
-    <!-- 操作按钮 -->
-    <div class="flex items-center justify-end space-x-2 pt-2 border-t border-neutral-100">
-      <button
-        id="readings-cancel-compose-btn"
-        type="button"
-        class="px-3 py-1.5 text-neutral-400 hover:text-neutral-800 rounded transition-colors cursor-pointer select-none"
-      >
-        取消
-      </button>
-      <button
-        id="readings-submit-btn"
-        type="button"
-        class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded transition-colors cursor-pointer select-none"
-      >
-        <span id="readings-submit-spinner" class="hidden"><i class="ph ph-spinner animate-spin text-xs"></i></span>
-        <span id="readings-submit-text">发布记录</span>
-      </button>
+    <!-- 操作按钮与可见性勾选 -->
+    <div class="flex items-center justify-between pt-2 border-t border-neutral-100 gap-2">
+      <label class="flex items-center space-x-1.5 text-xs font-mono text-neutral-500 hover:text-neutral-800 cursor-pointer select-none transition-colors" title="勾选后仅博主登录后可见，访客不可见">
+        <input
+          type="checkbox"
+          id="readings-private-input"
+          class="rounded border-neutral-300 text-neutral-900 focus:ring-0 w-3.5 h-3.5 cursor-pointer accent-neutral-900"
+        />
+        <span class="flex items-center space-x-1">
+          <svg class="w-3.5 h-3.5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 10s3.5 6 10 6 10-6 10-6"/>
+            <path d="M5 13.5L3 17"/>
+            <path d="M9 16L8 20"/>
+            <path d="M15 16L16 20"/>
+            <path d="M19 13.5L21 17"/>
+          </svg>
+          <span>仅我可见</span>
+        </span>
+      </label>
+
+      <div class="flex items-center space-x-2">
+        <button
+          id="readings-cancel-compose-btn"
+          type="button"
+          class="px-3 py-1.5 text-neutral-400 hover:text-neutral-800 rounded transition-colors cursor-pointer select-none"
+        >
+          取消
+        </button>
+        <button
+          id="readings-submit-btn"
+          type="button"
+          class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded transition-colors cursor-pointer select-none"
+        >
+          <span id="readings-submit-spinner" class="hidden"><i class="ph ph-spinner animate-spin text-xs"></i></span>
+          <span id="readings-submit-text">发布记录</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -300,8 +320,19 @@
     summary: string;
     tags?: string[];
     author_github: string;
+    is_private?: boolean;
     created_at: string;
   }
+
+  const closedEyeSvg = `
+    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 10s3.5 6 10 6 10-6 10-6"/>
+      <path d="M5 13.5L3 17"/>
+      <path d="M9 16L8 20"/>
+      <path d="M15 16L16 20"/>
+      <path d="M19 13.5L21 17"/>
+    </svg>
+  `;
 
   // 状态栏与操作面板 DOM 元素引用
   const countBadge = document.getElementById("readings-count-badge");
@@ -330,6 +361,7 @@
   const inputTitle = document.getElementById("readings-input-title") as HTMLInputElement | null;
   const inputSource = document.getElementById("readings-input-source") as HTMLInputElement | null;
   const inputSummary = document.getElementById("readings-input-summary") as HTMLTextAreaElement | null;
+  const inputPrivate = document.getElementById("readings-private-input") as HTMLInputElement | null;
   const quickSourceBtns = document.querySelectorAll(".readings-quick-source-btn");
 
   // 标签选择与录入 DOM
@@ -482,6 +514,7 @@
     const sourceLabel = item.source?.trim() || host || "External Article";
     const tags = (item.tags || []).filter((t) => Boolean(t.trim()));
     const isNotesExpanded = expandedReadingIds.has(item.id);
+    const isPriv = Boolean(item.is_private);
 
     card.innerHTML = `
       <!-- 卡片头部: 来源标识 + 日期 + 复制链接 + 博主操作 -->
@@ -493,6 +526,11 @@
           </span>
           <span class="text-neutral-300">·</span>
           <time class="text-neutral-400 text-[11px] shrink-0">${formatReadingDate(item.created_at)}</time>
+          ${
+            isPriv
+              ? `<span class="reading-private-badge inline-flex items-center space-x-0.5 px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 text-[10px] shrink-0" title="仅博主自己可见">${closedEyeSvg}<span>私密</span></span>`
+              : `<span class="reading-private-badge hidden inline-flex items-center space-x-0.5 px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 text-[10px] shrink-0" title="仅博主自己可见">${closedEyeSvg}<span>私密</span></span>`
+          }
         </div>
 
         <div class="flex items-center space-x-1.5 shrink-0">
@@ -508,7 +546,14 @@
 
           ${
             isAuthor
-              ? `<button type="button" class="btn-edit-reading text-neutral-400 hover:text-neutral-800 p-1 rounded hover:bg-neutral-100 cursor-pointer transition-colors" title="编辑此条记录">
+              ? `<button
+                  type="button"
+                  class="btn-privacy-reading ${isPriv ? "text-neutral-700 hover:text-neutral-900" : "text-neutral-350 hover:text-neutral-700"} p-1 rounded hover:bg-neutral-100 cursor-pointer transition-colors flex items-center justify-center"
+                  title="${isPriv ? "当前状态：仅我可见（点击公开）" : "当前状态：公开（点击设为仅我可见）"}"
+                >
+                  ${isPriv ? closedEyeSvg : '<i class="ph ph-eye text-sm"></i>'}
+                </button>
+                <button type="button" class="btn-edit-reading text-neutral-400 hover:text-neutral-800 p-1 rounded hover:bg-neutral-100 cursor-pointer transition-colors" title="编辑此条记录">
                   <i class="ph ph-pencil-simple text-xs"></i>
                  </button>
                  <button type="button" class="btn-del-reading text-neutral-350 hover:text-red-600 p-1 rounded hover:bg-neutral-100 cursor-pointer transition-colors" title="删除此条记录">
@@ -611,8 +656,15 @@
       }
     });
 
-    // 绑定博主操作 (编辑与删除)
+    // 绑定博主操作 (可见性切换、编辑与删除)
     if (isAuthor) {
+      const privacyBtn = card.querySelector(".btn-privacy-reading") as HTMLButtonElement | null;
+      const privateBadge = card.querySelector(".reading-private-badge") as HTMLElement | null;
+      privacyBtn?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await handleToggleReadingPrivacy(item, !Boolean(item.is_private), privacyBtn, privateBadge);
+      });
+
       const editBtn = card.querySelector(".btn-edit-reading");
       editBtn?.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -663,6 +715,10 @@
         .from("daily_readings")
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false });
+
+      if (!isAuthor) {
+        query = query.eq("is_private", false);
+      }
 
       if (currentTagFilter) {
         query = query.contains("tags", [currentTagFilter]);
@@ -737,11 +793,13 @@
         console.warn("读取 daily_tags(type=reading) 提示:", e);
       }
 
-      // 2. 从 daily_readings 中统计各技术标签的实际使用篇数
+      // 2. 从 daily_readings 中统计各技术标签的实际使用篇数（非博主仅统计公开精读）
       try {
-        const { data: readingsData } = await supabase
-          .from("daily_readings")
-          .select("tags");
+        let tagSourceQuery = supabase.from("daily_readings").select("tags");
+        if (!isAuthor) {
+          tagSourceQuery = tagSourceQuery.eq("is_private", false);
+        }
+        const { data: readingsData } = await tagSourceQuery;
         if (readingsData) {
           readingsData.forEach((row: any) => {
             if (Array.isArray(row?.tags)) {
@@ -1035,6 +1093,7 @@
     if (inputTitle) inputTitle.value = item.title || "";
     if (inputSource) inputSource.value = item.source || "";
     if (inputSummary) inputSummary.value = item.summary || "";
+    if (inputPrivate) inputPrivate.checked = Boolean(item.is_private);
     draftTags = (item.tags || []).map((t) => t.replace(/^#/, "").trim()).filter(Boolean);
 
     renderDraftTags();
@@ -1063,6 +1122,7 @@
     if (inputSource) inputSource.value = "";
     if (inputSummary) inputSummary.value = "";
     if (inputTag) inputTag.value = "";
+    if (inputPrivate) inputPrivate.checked = false;
     draftTags = [];
     renderDraftTags();
     renderSuggestedTags();
@@ -1121,6 +1181,7 @@
         source: source || getHostname(url),
         summary,
         tags: draftTags,
+        is_private: Boolean(inputPrivate?.checked),
         author_github: ghUsername,
       };
 
@@ -1164,6 +1225,53 @@
       if (submitBtn) submitBtn.removeAttribute("disabled");
       submitSpinner?.classList.add("hidden");
       if (submitText) submitText.textContent = isEdit ? "保存修改" : "发布记录";
+    }
+  }
+
+  // 切换某条精读记录的隐私可见性 (公开 <-> 仅我可见)
+  async function handleToggleReadingPrivacy(
+    item: ReadingItem,
+    newPrivateState: boolean,
+    btn?: HTMLButtonElement | null,
+    badgeEl?: HTMLElement | null
+  ) {
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner animate-spin text-xs"></i>';
+      }
+
+      const { error } = await supabase
+        .from("daily_readings")
+        .update({ is_private: newPrivateState })
+        .eq("id", item.id)
+        .select();
+
+      if (error) throw error;
+
+      item.is_private = newPrivateState;
+
+      if (badgeEl) {
+        badgeEl.classList.toggle("hidden", !newPrivateState);
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.className = `btn-privacy-reading ${
+          newPrivateState
+            ? "text-neutral-700 hover:text-neutral-900"
+            : "text-neutral-350 hover:text-neutral-700"
+        } p-1 rounded hover:bg-neutral-100 cursor-pointer transition-colors flex items-center justify-center`;
+        btn.title = newPrivateState ? "当前状态：仅我可见（点击公开）" : "当前状态：公开（点击设为仅我可见）";
+        btn.innerHTML = newPrivateState ? closedEyeSvg : '<i class="ph ph-eye text-sm"></i>';
+      }
+    } catch (err: any) {
+      console.error("切换精读可见性失败:", err);
+      alert(`更新可见性失败: ${err.message || "请检查网络或 Supabase 权限/字段"}`);
+      if (btn) {
+        btn.disabled = false;
+        const currentPriv = Boolean(item.is_private);
+        btn.innerHTML = currentPriv ? closedEyeSvg : '<i class="ph ph-eye text-sm"></i>';
+      }
     }
   }
 
