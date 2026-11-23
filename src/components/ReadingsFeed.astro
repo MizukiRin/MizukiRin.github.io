@@ -527,9 +527,9 @@
           <span class="text-neutral-300">·</span>
           <time class="text-neutral-400 text-[11px] shrink-0">${formatReadingDate(item.created_at)}</time>
           ${
-            isPriv
-              ? `<span class="reading-private-badge inline-flex items-center space-x-0.5 px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 text-[10px] shrink-0" title="仅博主自己可见">${closedEyeSvg}<span>私密</span></span>`
-              : `<span class="reading-private-badge hidden inline-flex items-center space-x-0.5 px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 text-[10px] shrink-0" title="仅博主自己可见">${closedEyeSvg}<span>私密</span></span>`
+            isAuthor
+              ? `<span class="reading-private-badge ${isPriv ? "inline-flex" : "hidden"} items-center space-x-0.5 px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 text-[10px] shrink-0" title="仅博主自己可见">${closedEyeSvg}<span>私密</span></span>`
+              : ""
           }
         </div>
 
@@ -1253,6 +1253,7 @@
 
       if (badgeEl) {
         badgeEl.classList.toggle("hidden", !newPrivateState);
+        badgeEl.classList.toggle("inline-flex", newPrivateState);
       }
       if (btn) {
         btn.disabled = false;
